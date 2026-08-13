@@ -1,93 +1,90 @@
-# 🚀 Guía de Despliegue en Render (Backend + Base de Datos PostgreSQL)
+# 🚀 Guía de Despliegue: Backend en Render + Base de Datos en Supabase
 
-Esta guía explica paso a paso cómo publicar el backend (**FastAPI**) y la base de datos (**PostgreSQL**) en **[Render](https://render.com/)**.
+Esta arquitectura es la recomendada para evitar los límites del plan gratuito de Render (Render solo permite **1 sola base de datos gratuita por cuenta**, la cual además expira cada 30 días).
+
+Al usar **Supabase (PostgreSQL gratuito y permanente)** para la base de datos y **Render** para el backend (**FastAPI**), obtienes la mejor combinación 100% gratuita y sin conflictos.
 
 ---
 
-## 📋 Arquitectura del Despliegue
+## 📋 Arquitectura
 
 ```
 ┌────────────────────────────────────────────────────────┐
+│                        SUPABASE                        │
+│                                                        │
+│                  ┌──────────────────┐                  │
+│                  │  PostgreSQL DB   │                  │
+│                  │  (Gratuito/24/7) │                  │
+│                  └────────▲─────────┘                  │
+└───────────────────────────┼────────────────────────────┘
+                            │
+               DATABASE_URL │ (Conexión segura IPv4/SSL)
+                            │
+┌───────────────────────────┼────────────────────────────┐
 │                        RENDER                          │
 │                                                        │
-│  ┌──────────────────────┐    Internal Connection       │
-│  │     Web Service      │ ──────────────────────────┐  │
-│  │   (FastAPI/Python)   │                           │  │
-│  │   panalera-backend   │                           ▼  │
-│  └──────────┬───────────┘                ┌──────────────────┐
-│             │                            │   PostgreSQL DB  │
-│             │ Public HTTPS URL           │   panalera-db    │
-│             ▼                            └──────────────────┘
-│     [ Frontend / Web / App ]                           │
-└────────────────────────────────────────────────────────┘
+│                  ┌────────┴─────────┐                  │
+│                  │   Web Service    │                  │
+│                  │ (FastAPI/Python) │                  │
+│                  └────────┬─────────┘                  │
+└───────────────────────────┼────────────────────────────┘
+                            │ Public HTTPS URL (/api/v1)
+                            ▼
+                [ Frontend / Vercel / App ]
 ```
 
-El proyecto ya incluye la configuración de Infraestructura como Código (**Render Blueprint** en `render.yaml`), lo que permite desplegar la base de datos y el backend con **un solo clic**.
+---
+
+## 🗄️ Paso 1: Configurar la Base de Datos en Supabase (2 minutos)
+
+1. Ingresa a **[supabase.com](https://supabase.com/)** e inicia sesión (o crea cuenta gratis con GitHub).
+2. Haz clic en **New Project**.
+3. Configura el proyecto:
+   - **Name**: `panalera-db`
+   - **Database Password**: Elige una contraseña segura (¡guárdala!).
+   - **Region**: Selecciona la más cercana (ej. *East US* o *West US*).
+   - **Pricing Plan**: `Free`.
+4. Haz clic en **Create new project** y espera ~1 minuto a que se aprovisione.
+5. **Obtener la URL de conexión**:
+   - En el menú lateral izquierdo, ve a ⚙️ **Project Settings** > **Database**.
+   - Desplázate hacia abajo hasta la sección **Connection parameters** o **Connection string** > pestaña **URI**.
+   - Si usas el nuevo panel de Supabase:
+     - Selecciona **Nodejs** o **URI** / **Connection Pooling** (Modo **Session**, puerto `5432`).
+   - La URL tendrá una estructura como esta:
+     ```text
+     postgresql://postgres.[PROJECT-REF]:[TU-CONTRASEÑA]@aws-0-[REGION].pooler.supabase.com:5432/postgres
+     ```
+     *(o la URL directa `postgresql://postgres:[TU-CONTRASEÑA]@db.[PROJECT-REF].supabase.co:5432/postgres`)*.
 
 ---
 
-## 🌟 Método 1: Despliegue Automático con Blueprint (Recomendado)
+## ⚙️ Paso 2: Desplegar el Backend en Render
 
-Render leerá el archivo `render.yaml` y creará automáticamente tanto la base de datos como el servicio web, vinculando las credenciales y ejecutando las migraciones.
+### Opción A: Con Render Blueprint (`render.yaml`) - Recomendado
 
-### Pasos:
-
-1. **Subir los cambios a tu repositorio Git** (GitHub o GitLab):
+1. Sube los cambios más recientes a tu repositorio:
    ```bash
    git add .
-   git commit -m "Configuracion de despliegue en Render para backend y base de datos"
+   git commit -m "Configurar Render con Supabase"
    git push origin main
    ```
-
-2. **Ingresar a Render**:
-   - Ve a [dashboard.render.com](https://dashboard.render.com/) e inicia sesión.
-
-3. **Crear un nuevo Blueprint**:
-   - Haz clic en el botón superior **New +** y selecciona **Blueprint**.
-   - Conecta tu cuenta de GitHub/GitLab si aún no lo has hecho y selecciona el repositorio de `back_panalera`.
-
-4. **Revisar y Aplicar**:
-   - Render detectará el archivo `render.yaml` y te mostrará los dos recursos a crear:
-     - 🗄️ **panalera-db** (PostgreSQL Database - Plan Free)
-     - ⚙️ **panalera-backend** (Web Service - Plan Free)
-   - Asigna un nombre al Blueprint Instance (por ejemplo: `panalera-production`).
-   - Haz clic en **Apply**.
-
-5. **Proceso Automático de Render**:
-   - Render creará la base de datos PostgreSQL.
-   - Instalará las dependencias (`poetry install`).
-   - Ejecutará el comando pre-deploy: `alembic upgrade head && python seed_db.py` (aplica todas las migraciones y crea el usuario `admin`).
-   - Iniciará la API con `uvicorn`.
+2. Ve a [dashboard.render.com](https://dashboard.render.com/) > **New +** > **Blueprint**.
+3. Selecciona tu repositorio `back_panalera`.
+4. Render detectará el servicio `panalera-backend` y te solicitará ingresar el valor de:
+   - **DATABASE_URL**: Pega la URI de Supabase obtenida en el Paso 1.
+5. Haz clic en **Apply**.
 
 ---
 
-## 🛠️ Método 2: Despliegue Manual (Paso a Paso)
+### Opción B: Creando el Web Service Manualmente en Render
 
-Si prefieres crear los recursos manualmente desde el dashboard de Render:
-
-### Paso 1: Crear la Base de Datos PostgreSQL
-
-1. En Render Dashboard, clic en **New +** > **PostgreSQL**.
-2. Completa los campos:
-   - **Name**: `panalera-db`
-   - **Database**: `panalera_db`
-   - **User**: `panalera_user`
-   - **Region**: Selecciona la más cercana (ej. *Oregon (US West)* o *Ohio (US East)*).
-   - **Plan**: `Free`.
-3. Clic en **Create Database**.
-4. Una vez creada, ve a la sección **Connections** y copia la **Internal Database URL** (empieza con `postgres://...`).
-
----
-
-### Paso 2: Crear el Web Service para el Backend
-
-1. En Render Dashboard, clic en **New +** > **Web Service**.
-2. Conecta tu repositorio Git (`back_panalera`).
-3. Configura los siguientes parámetros:
+1. En Render Dashboard, haz clic en **New +** > **Web Service**.
+2. Conecta tu repositorio `back_panalera`.
+3. Configura los campos:
    - **Name**: `panalera-backend`
    - **Language / Runtime**: `Python 3`
-   - **Region**: La misma región donde creaste la base de datos.
-   - **Branch**: `main` (o tu rama principal).
+   - **Region**: La más cercana a tu base de datos de Supabase.
+   - **Branch**: `main`.
    - **Build Command**:
      ```bash
      pip install poetry && poetry config virtualenvs.create false && poetry install --only main
@@ -97,72 +94,47 @@ Si prefieres crear los recursos manualmente desde el dashboard de Render:
      alembic upgrade head && python seed_db.py && uvicorn src.main:app --host 0.0.0.0 --port $PORT
      ```
    - **Plan**: `Free`.
+4. Agrega las **Variables de Entorno** (**Environment Variables**):
 
-> **Nota para Plan Free**: Render no permite `pre-deploy commands` en el plan gratuito, por lo que las migraciones y la creación del usuario inicial se ejecutan automáticamente al inicio de `Start Command`.
-
-5. Agrega las **Variables de Entorno** (**Environment Variables**):
-
-| Clave (Key) | Valor (Value) | Descripción |
+| Variable | Valor | Descripción |
 | :--- | :--- | :--- |
-| `PYTHON_VERSION` | `3.13.0` | Versión de Python en el contenedor |
+| `DATABASE_URL` | *Pega la URI de Supabase* | URL de conexión de Supabase |
+| `SECRET_KEY` | *Genera un texto seguro de 32+ caracteres* | Firma para tokens JWT |
+| `ALGORITHM` | `HS256` | Algoritmo JWT |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Duración del token de acceso |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Duración del refresh token |
+| `ALLOWED_ORIGINS` | `*` o la URL de tu frontend | CORS para el frontend |
 | `ENVIRONMENT` | `production` | Modo de ejecución |
-| `LOG_LEVEL` | `INFO` | Nivel de logs |
-| `DATABASE_URL` | *Pega la Internal Database URL copiada en el Paso 1* | Conexión a la base de datos |
-| `SECRET_KEY` | *Genera una clave segura de 32+ caracteres* | Clave para firmar JWT |
-| `ALGORITHM` | `HS256` | Algoritmo de JWT |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Duración del token de acceso (minutos) |
-| `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Duración del token de refresco (días) |
-| `ALLOWED_ORIGINS` | `*` o la URL de tu frontend (ej. `https://tu-frontend.vercel.app`) | Orígenes permitidos por CORS |
+| `PYTHON_VERSION` | `3.13.0` | Versión de Python |
 
-6. Haz clic en **Create Web Service**.
+5. Haz clic en **Create Web Service**.
 
 ---
 
-## 🔍 Verificación y Pruebas
+## 🔄 ¿Qué ocurre durante el Despliegue?
 
-Una vez finalizado el despliegue (estado **Live**):
+Cuando Render inicia el servicio web:
+1. Se conecta a **Supabase** usando tu `DATABASE_URL`.
+2. Ejecuta automáticamente `alembic upgrade head` para crear todas las tablas en Supabase.
+3. Ejecuta `python seed_db.py` para crear el rol `Admin` y el usuario inicial `admin` / `admin123`.
+4. Levanta FastAPI en Uvicorn.
+
+---
+
+## 🔍 Verificación
+
+Una vez que el despliegue esté en verde (**Live**):
 
 1. **Health Check**:
-   Abre en el navegador:
    ```
    https://<tu-servicio-render>.onrender.com/health
    ```
-   Respuesta esperada:
-   ```json
-   {"status": "ok"}
-   ```
+   Retorna: `{"status": "ok"}`
 
-2. **Documentación Interactiva (Swagger UI)**:
-   Abre:
+2. **Swagger Docs**:
    ```
    https://<tu-servicio-render>.onrender.com/docs
    ```
-   Podrás explorar y probar todos los endpoints de la API.
 
-3. **Credenciales Iniciales de Administrador**:
-   El comando pre-deploy crea automáticamente las credenciales iniciales:
-   - **Usuario**: `admin`
-   - **Contraseña**: `admin123`
-   - **Rol**: `Admin`
-
-   *Nota de seguridad*: Se recomienda cambiar la contraseña del usuario administrador una vez desplegado en producción.
-
----
-
-## 🔗 Conectar el Frontend con el Backend en Render
-
-En tu proyecto Frontend (`front_panalera`), configura tu archivo `.env.production` o la variable de entorno en tu plataforma de despliegue (Vercel, Netlify o Render):
-
-```env
-VITE_API_BASE_URL=https://panalera-backend.onrender.com/api/v1
-```
-
-> **Importante sobre CORS**: En la configuración del Web Service en Render, actualiza la variable `ALLOWED_ORIGINS` con la URL pública de tu frontend (por ejemplo: `https://mi-tienda-panalera.vercel.app,http://localhost:3000,http://localhost:5173`).
-
----
-
-## 💡 Notas sobre el Plan Gratuito de Render
-
-- **Inactividad (Spin-down)**: Los Web Services gratuitos en Render se suspenden tras 15 minutos sin recibir peticiones. La primera petición tras la inactividad puede tardar unos ~30-50 segundos en despertar el servidor.
-- **Base de Datos Free**: Las bases de datos PostgreSQL gratuitas de Render están activas 24/7 de forma continua durante 30 días o el ciclo del plan gratuito.
-- **Logs**: Puedes consultar los logs en tiempo real directamente en la pestaña **Logs** del servicio en Render.
+3. **Ver tablas en Supabase**:
+   Puedes ir al panel de Supabase > **Table Editor** y verás todas las tablas (`users`, `inventory`, `movements`, `roles`, etc.) y el usuario `admin` ya creados.
