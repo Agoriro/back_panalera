@@ -107,8 +107,7 @@ El proyecto cuenta con un archivo `render.yaml` (Blueprint) listo para desplegar
 3. Crea el servicio web: **New +** > **Web Service** seleccionando tu repositorio.
 4. Parámetros de configuración:
    - **Build Command**: `pip install poetry && poetry config virtualenvs.create false && poetry install --only main`
-   - **Pre-deploy Command**: `alembic upgrade head && python seed_db.py`
-   - **Start Command**: `uvicorn src.main:app --host 0.0.0.0 --port $PORT`
+   - **Start Command**: `alembic upgrade head && python seed_db.py && uvicorn src.main:app --host 0.0.0.0 --port $PORT`
 5. Variables de entorno:
    - `DATABASE_URL`: Pega la URL interna de la base de datos.
    - `SECRET_KEY`: Cadena segura para firma de tokens JWT.

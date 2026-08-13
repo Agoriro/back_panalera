@@ -94,15 +94,11 @@ Si prefieres crear los recursos manualmente desde el dashboard de Render:
      ```
    - **Start Command**:
      ```bash
-     uvicorn src.main:app --host 0.0.0.0 --port $PORT
+     alembic upgrade head && python seed_db.py && uvicorn src.main:app --host 0.0.0.0 --port $PORT
      ```
    - **Plan**: `Free`.
 
-4. En la pestaña **Advanced**:
-   - **Pre-Deploy Command**:
-     ```bash
-     alembic upgrade head && python seed_db.py
-     ```
+> **Nota para Plan Free**: Render no permite `pre-deploy commands` en el plan gratuito, por lo que las migraciones y la creación del usuario inicial se ejecutan automáticamente al inicio de `Start Command`.
 
 5. Agrega las **Variables de Entorno** (**Environment Variables**):
 
