@@ -12,6 +12,8 @@ class InventoryModel(Base):
 
     id_inventory = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
     description_inventory = Column(String, nullable=False)
+    code_inventory = Column(String, nullable=True)
+    barcode_inventory = Column(String, nullable=True)
     utility = Column(Numeric(18, 6), nullable=False)
     id_supplier = Column(UUID(as_uuid=True), ForeignKey("suppliers.id_supplier"), nullable=False)
     id_color = Column(UUID(as_uuid=True), ForeignKey("colors.id_color"), nullable=False)

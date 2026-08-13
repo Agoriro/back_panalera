@@ -24,8 +24,8 @@ class AuthUseCase:
             logger.warning("Login fallido: contraseña incorrecta", username=data.username)
             raise UnauthorizedException("Credenciales inválidas")
 
-        # El token incluye el rol
-        token_data = {"sub": str(user.id_user), "role": str(user.id_role)}
+        # El token incluye el rol como string legible
+        token_data = {"sub": str(user.id_user), "role": user.role_name or ""}
         access_token = create_access_token(data=token_data)
         refresh_token = create_refresh_token(data={"sub": str(user.id_user)})
 
@@ -42,7 +42,7 @@ class AuthUseCase:
         if not user or not user.is_active:
             raise UnauthorizedException("Usuario inactivo o no encontrado")
 
-        token_data = {"sub": str(user.id_user), "role": str(user.id_role)}
+        token_data = {"sub": str(user.id_user), "role": user.role_name or ""}
         access_token = create_access_token(data=token_data)
         
         return TokenResponse(access_token=access_token, refresh_token=data.refresh_token)

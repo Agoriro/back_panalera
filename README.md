@@ -83,6 +83,42 @@ poetry run pytest --cov=src tests/
 poetry run pytest -v
 ```
 
+## 🚀 Instrucciones de Despliegue en Render (Render.com)
+
+El proyecto cuenta con un archivo `render.yaml` (Blueprint) listo para desplegar **tanto la base de datos PostgreSQL como la API backend** en **Render** con un solo clic.
+
+> 📖 **Guía completa paso a paso**: Consulta [GUIA_DESPLIEGUE_RENDER.md](GUIA_DESPLIEGUE_RENDER.md) para ver detalles de despliegue automático, despliegue manual y conexión con el Frontend.
+
+### Opción 1: Despliegue Automático con Blueprint (`render.yaml`) - Recomendado
+
+1. Sube todos los cambios a tu repositorio de **GitHub** o **GitLab**.
+2. Ve a [Render Dashboard](https://dashboard.render.com/) e inicia sesión.
+3. Haz clic en **New +** > **Blueprint**.
+4. Conecta tu repositorio `back_panalera`.
+5. Render detectará automáticamente `render.yaml` y aprovisionará:
+   - 🗄️ **panalera-db**: Base de datos PostgreSQL gestionada.
+   - ⚙️ **panalera-backend**: Servicio Web FastAPI.
+6. Haz clic en **Apply**. Render creará la base de datos, ejecutará migraciones (`alembic upgrade head`), creará el usuario administrador inicial (`seed_db.py`) y levantará el servicio.
+
+### Opción 2: Despliegue Manual desde el Dashboard de Render
+
+1. En Render Dashboard, crea primero la base de datos: **New +** > **PostgreSQL** (`panalera-db`).
+2. Copia la **Internal Database URL**.
+3. Crea el servicio web: **New +** > **Web Service** seleccionando tu repositorio.
+4. Parámetros de configuración:
+   - **Build Command**: `pip install poetry && poetry config virtualenvs.create false && poetry install --only main`
+   - **Pre-deploy Command**: `alembic upgrade head && python seed_db.py`
+   - **Start Command**: `uvicorn src.main:app --host 0.0.0.0 --port $PORT`
+5. Variables de entorno:
+   - `DATABASE_URL`: Pega la URL interna de la base de datos.
+   - `SECRET_KEY`: Cadena segura para firma de tokens JWT.
+   - `ENVIRONMENT`: `production`
+   - `PYTHON_VERSION`: `3.13.0`
+   - `ALLOWED_ORIGINS`: Dominio de tu Frontend o `*`
+
+
+---
+
 ## 🚀 Instrucciones de Despliegue en Railway
 
 Desplegar el backend en Railway es un proceso sencillo ya que el proyecto incluye un `Dockerfile`.

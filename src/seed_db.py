@@ -15,15 +15,15 @@ async def seed_database():
         
         # 1. Verificar si el rol de admin ya existe
         roles = await role_repo.get_all()
-        admin_role = next((r for r in roles if r.name.lower() == "admin"), None)
+        admin_role = next((r for r in roles if r.name.lower() == "Admin"), None)
         
         if not admin_role:
-            print("Creando el rol 'admin'...")
-            new_role = Role(id_role=None, name="admin")  # type: ignore
+            print("Creando el rol 'Admin'...")
+            new_role = Role(id_role=None, name="Admin")  # type: ignore
             admin_role = await role_repo.create(new_role)
-            print(f"Rol 'admin' creado exitosamente con ID: {admin_role.id_role}")
+            print(f"Rol 'Admin' creado exitosamente con ID: {admin_role.id_role}")
         else:
-            print(f"El rol 'admin' ya existe (ID: {admin_role.id_role}).")
+            print(f"El rol 'Admin' ya existe (ID: {admin_role.id_role}).")
             
         # 2. Verificar si el usuario 'admin' ya existe
         admin_user = await user_repo.get_by_username("admin")

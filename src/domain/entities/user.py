@@ -14,5 +14,6 @@ class User:
     password: str
     id_role: UUID
     is_active: bool
+    role_name: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

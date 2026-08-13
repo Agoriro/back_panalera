@@ -19,6 +19,8 @@ class InventoryPhotoResponse(BaseModel):
 
 class InventoryCreate(BaseModel):
     description_inventory: str = Field(..., min_length=1)
+    code_inventory: Optional[str] = Field(None, description="Código de producto (SKU)")
+    barcode_inventory: Optional[str] = Field(None, description="Código de barras del producto")
     utility: Decimal = Field(..., ge=0)
     id_supplier: UUID
     id_color: UUID
@@ -28,6 +30,8 @@ class InventoryCreate(BaseModel):
 
 class InventoryUpdate(BaseModel):
     description_inventory: Optional[str] = Field(None, min_length=1)
+    code_inventory: Optional[str] = None
+    barcode_inventory: Optional[str] = None
     utility: Optional[Decimal] = Field(None, ge=0)
     id_supplier: Optional[UUID] = None
     id_color: Optional[UUID] = None
@@ -38,6 +42,8 @@ class InventoryUpdate(BaseModel):
 class InventoryResponse(BaseModel):
     id_inventory: UUID
     description_inventory: str
+    code_inventory: Optional[str] = None
+    barcode_inventory: Optional[str] = None
     utility: Decimal
     id_supplier: UUID
     id_color: UUID

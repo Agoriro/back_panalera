@@ -1,5 +1,5 @@
 # Paso 16: src/interfaces/api/v1/routers/inventory.py
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Query
 from typing import List, Optional
 from uuid import UUID
 
@@ -21,9 +21,12 @@ async def get_inventories(
     color: Optional[UUID] = None,
     size: Optional[UUID] = None,
     is_active: Optional[bool] = None,
+    code_inventory: Optional[str] = None,
+    barcode_inventory: Optional[str] = None,
+    search: Optional[str] = Query(None, description="Búsqueda parcial en descripción, código o código de barras"),
     use_case: InventoryUseCase = Depends(get_inventory_use_case)
 ):
-    return await use_case.get_all(category, gender, color, size, is_active)
+    return await use_case.get_all(category, gender, color, size, is_active, code_inventory, barcode_inventory, search)
 
 @router.get("/{id}", response_model=InventoryResponse)
 async def get_inventory(id: UUID, use_case: InventoryUseCase = Depends(get_inventory_use_case)):

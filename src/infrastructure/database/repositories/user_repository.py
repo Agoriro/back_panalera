@@ -5,6 +5,7 @@ Implementación del repositorio de User.
 from typing import List, Optional
 from uuid import UUID
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.user import User
@@ -23,6 +24,7 @@ class UserRepository(BaseRepository[UserModel], IUserRepository):
             password=model.password,
             id_role=model.id_role,
             is_active=model.is_active,
+            role_name=model.role.name if getattr(model, "role", None) else None,
             created_at=model.created_at,
             updated_at=model.updated_at
         )
@@ -41,20 +43,28 @@ class UserRepository(BaseRepository[UserModel], IUserRepository):
         if not user.id_user:
             model.id_user = None
         created_model = await super().create(model)
-        return self._to_entity(created_model)
+        # Recargar con el rol cargado
+        query = select(UserModel).options(joinedload(UserModel.role)).where(UserModel.id_user == created_model.id_user)
+        result = await self.session.execute(query)
+        created_model = result.scalars().first()
+        return self._to_entity(created_model) # type: ignore
 
     async def get_by_id(self, id_user: UUID) -> Optional[User]:
-        model = await super().get_by_id(id_user)
+        query = select(UserModel).options(joinedload(UserModel.role)).where(UserModel.id_user == id_user)
+        result = await self.session.execute(query)
+        model = result.scalars().first()
         return self._to_entity(model) if model else None
 
     async def get_by_username(self, username: str) -> Optional[User]:
-        query = select(UserModel).where(UserModel.user == username)
+        query = select(UserModel).options(joinedload(UserModel.role)).where(UserModel.user == username)
         result = await self.session.execute(query)
         model = result.scalars().first()
         return self._to_entity(model) if model else None
 
     async def get_all(self) -> List[User]:
-        models = await super().get_all()
+        query = select(UserModel).options(joinedload(UserModel.role))
+        result = await self.session.execute(query)
+        models = result.scalars().all()
         return [self._to_entity(m) for m in models]
 
     async def update(self, user: User) -> User:
@@ -62,5 +72,8 @@ class UserRepository(BaseRepository[UserModel], IUserRepository):
         # SQLAlchemy merge para actualizar preservando session
         merged_model = await self.session.merge(model)
         await self.session.commit()
-        await self.session.refresh(merged_model)
-        return self._to_entity(merged_model)
+        # Recargar con el rol cargado
+        query = select(UserModel).options(joinedload(UserModel.role)).where(UserModel.id_user == merged_model.id_user)
+        result = await self.session.execute(query)
+        merged_model = result.scalars().first()
+        return self._to_entity(merged_model) # type: ignore

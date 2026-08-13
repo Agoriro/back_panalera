@@ -19,7 +19,8 @@ class InventoryRepository(ABC):
     @abstractmethod
     async def get_all(self, category_id: Optional[UUID] = None, gender_id: Optional[UUID] = None, 
                       color_id: Optional[UUID] = None, size_id: Optional[UUID] = None, 
-                      is_active: Optional[bool] = None) -> List[Inventory]:
+                      is_active: Optional[bool] = None, code_inventory: Optional[str] = None,
+                      barcode_inventory: Optional[str] = None, search: Optional[str] = None) -> List[Inventory]:
         pass
 
     @abstractmethod

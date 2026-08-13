@@ -27,6 +27,8 @@ class Inventory:
     id_category: UUID
     id_gender: UUID
     is_active: bool
+    code_inventory: Optional[str] = None
+    barcode_inventory: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     # Campo opcional para almacenar las fotos asociadas al recuperar el inventario

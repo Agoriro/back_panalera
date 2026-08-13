@@ -4,7 +4,7 @@ Implementación de repositorios de inventario.
 """
 from typing import List, Optional
 from uuid import UUID
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -36,6 +36,8 @@ class InventoryRepository(BaseRepository[InventoryModel], IInventoryRepository):
             id_category=model.id_category,
             id_gender=model.id_gender,
             is_active=model.is_active,
+            code_inventory=model.code_inventory,
+            barcode_inventory=model.barcode_inventory,
             created_at=model.created_at,
             updated_at=model.updated_at,
             photos=photos
@@ -52,6 +54,8 @@ class InventoryRepository(BaseRepository[InventoryModel], IInventoryRepository):
             id_category=entity.id_category,
             id_gender=entity.id_gender,
             is_active=entity.is_active,
+            code_inventory=entity.code_inventory,
+            barcode_inventory=entity.barcode_inventory,
         )
 
     async def create(self, inventory: Inventory) -> Inventory:
@@ -69,13 +73,26 @@ class InventoryRepository(BaseRepository[InventoryModel], IInventoryRepository):
 
     async def get_all(self, category_id: Optional[UUID] = None, gender_id: Optional[UUID] = None, 
                       color_id: Optional[UUID] = None, size_id: Optional[UUID] = None, 
-                      is_active: Optional[bool] = None) -> List[Inventory]:
+                      is_active: Optional[bool] = None, code_inventory: Optional[str] = None,
+                      barcode_inventory: Optional[str] = None, search: Optional[str] = None) -> List[Inventory]:
         query = select(InventoryModel).options(selectinload(InventoryModel.photos))
         if category_id: query = query.where(InventoryModel.id_category == category_id)
         if gender_id: query = query.where(InventoryModel.id_gender == gender_id)
         if color_id: query = query.where(InventoryModel.id_color == color_id)
         if size_id: query = query.where(InventoryModel.id_size == size_id)
         if is_active is not None: query = query.where(InventoryModel.is_active == is_active)
+        if code_inventory: query = query.where(InventoryModel.code_inventory == code_inventory)
+        if barcode_inventory: query = query.where(InventoryModel.barcode_inventory == barcode_inventory)
+        
+        if search and search.strip():
+            search_pattern = f"%{search.strip()}%"
+            query = query.where(
+                or_(
+                    InventoryModel.description_inventory.ilike(search_pattern),
+                    InventoryModel.code_inventory.ilike(search_pattern),
+                    InventoryModel.barcode_inventory.ilike(search_pattern)
+                )
+            )
         
         result = await self.session.execute(query)
         return [self._to_entity(m) for m in result.scalars().all()]

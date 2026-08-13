@@ -37,6 +37,8 @@ class InventoryUseCase:
         inventory = Inventory(
             id_inventory=None, # type: ignore
             description_inventory=data.description_inventory,
+            code_inventory=data.code_inventory,
+            barcode_inventory=data.barcode_inventory,
             utility=data.utility,
             id_supplier=data.id_supplier,
             id_color=data.id_color,
@@ -50,8 +52,9 @@ class InventoryUseCase:
 
     async def get_all(self, category_id: Optional[UUID] = None, gender_id: Optional[UUID] = None, 
                       color_id: Optional[UUID] = None, size_id: Optional[UUID] = None, 
-                      is_active: Optional[bool] = None) -> List[InventoryResponse]:
-        inventories = await self.inv_repo.get_all(category_id, gender_id, color_id, size_id, is_active)
+                      is_active: Optional[bool] = None, code_inventory: Optional[str] = None,
+                      barcode_inventory: Optional[str] = None, search: Optional[str] = None) -> List[InventoryResponse]:
+        inventories = await self.inv_repo.get_all(category_id, gender_id, color_id, size_id, is_active, code_inventory, barcode_inventory, search)
         return [InventoryResponse.model_validate(i) for i in inventories]
 
     async def get_by_id(self, id_inventory: UUID) -> InventoryResponse:
