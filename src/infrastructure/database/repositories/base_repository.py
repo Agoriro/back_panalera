@@ -16,13 +16,8 @@ class BaseRepository(Generic[ModelType]):
         self.session = session
 
     async def get_by_id(self, id: UUID) -> Optional[ModelType]:
-        query = select(self.model).where(getattr(self.model, f"id_{self.model.__tablename__[:-1]}") == id)
-        # Algunos modelos tienen nombre de id diferente o tablename plural,
-        # para evitar problemas de reflexión, se asume que las hijas implementarán
-        # sus propios métodos o usarán atributos explícitos, pero aquí hay un genérico simple.
-        # Mejor buscar por primary key real.
-        pk_name = self.model.__mapper__.primary_key[0].name
-        query = select(self.model).where(getattr(self.model, pk_name) == id)
+        pk_column = self.model.__mapper__.primary_key[0]
+        query = select(self.model).where(pk_column == id)
         result = await self.session.execute(query)
         return result.scalars().first()
 
