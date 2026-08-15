@@ -15,7 +15,7 @@ async def seed_database():
         
         # 1. Verificar si el rol de admin ya existe
         roles = await role_repo.get_all()
-        admin_role = next((r for r in roles if r.name.lower() == "Admin"), None)
+        admin_role = next((r for r in roles if r.name.strip().lower() == "admin"), None)
         
         if not admin_role:
             print("Creando el rol 'Admin'...")
