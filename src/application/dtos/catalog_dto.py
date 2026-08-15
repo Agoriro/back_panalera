@@ -1,5 +1,4 @@
-# Paso 14: src/application/dtos/catalog_dto.py
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from uuid import UUID
 from datetime import datetime
 from typing import Optional
@@ -23,10 +22,38 @@ class SupplierResponse(SupplierBase):
     model_config = ConfigDict(from_attributes=True)
 
 class BasicCatalogCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=50)
+    name: Optional[str] = Field(None, min_length=1, max_length=50)
+    name_category: Optional[str] = Field(None, min_length=1, max_length=50)
+    name_color: Optional[str] = Field(None, min_length=1, max_length=50)
+    name_size: Optional[str] = Field(None, min_length=1, max_length=50)
+    name_gender: Optional[str] = Field(None, min_length=1, max_length=50)
+
+    @model_validator(mode="after")
+    def check_at_least_one_name(self):
+        val = self.name or self.name_category or self.name_color or self.name_size or self.name_gender
+        if not val or not val.strip():
+            raise ValueError("El nombre es requerido y no puede estar vacío")
+        return self
+
+    def get_name(self) -> str:
+        return (self.name or self.name_category or self.name_color or self.name_size or self.name_gender or "").strip()
 
 class BasicCatalogUpdate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=50)
+    name: Optional[str] = Field(None, min_length=1, max_length=50)
+    name_category: Optional[str] = Field(None, min_length=1, max_length=50)
+    name_color: Optional[str] = Field(None, min_length=1, max_length=50)
+    name_size: Optional[str] = Field(None, min_length=1, max_length=50)
+    name_gender: Optional[str] = Field(None, min_length=1, max_length=50)
+
+    @model_validator(mode="after")
+    def check_at_least_one_name(self):
+        val = self.name or self.name_category or self.name_color or self.name_size or self.name_gender
+        if not val or not val.strip():
+            raise ValueError("El nombre es requerido y no puede estar vacío")
+        return self
+
+    def get_name(self) -> str:
+        return (self.name or self.name_category or self.name_color or self.name_size or self.name_gender or "").strip()
 
 class ColorResponse(BaseModel):
     id_color: UUID

@@ -9,37 +9,37 @@ from uuid import UUID
 
 @dataclass
 class Supplier:
-    id_supplier: UUID
-    name_supplier: str
-    address: Optional[str]
-    is_active: bool
+    id_supplier: Optional[UUID] = None
+    name_supplier: str = ""
+    address: Optional[str] = None
+    is_active: bool = True
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
 @dataclass
 class Color:
-    id_color: UUID
-    name_color: str
+    id_color: Optional[UUID] = None
+    name_color: str = ""
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
 @dataclass
 class Size:
-    id_size: UUID
-    name_size: str
+    id_size: Optional[UUID] = None
+    name_size: str = ""
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
 @dataclass
 class Category:
-    id_category: UUID
-    name_category: str
+    id_category: Optional[UUID] = None
+    name_category: str = ""
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
 @dataclass
 class Gender:
-    id_gender: UUID
-    name_gender: str
+    id_gender: Optional[UUID] = None
+    name_gender: str = ""
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
