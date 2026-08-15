@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator, computed_field
 from uuid import UUID
 from datetime import datetime
 from typing import Optional
@@ -16,8 +16,18 @@ class SupplierUpdate(SupplierBase):
 class SupplierResponse(SupplierBase):
     id_supplier: UUID
     is_active: bool
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    @computed_field
+    @property
+    def id(self) -> UUID:
+        return self.id_supplier
+
+    @computed_field
+    @property
+    def name(self) -> str:
+        return self.name_supplier
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -58,31 +68,71 @@ class BasicCatalogUpdate(BaseModel):
 class ColorResponse(BaseModel):
     id_color: UUID
     name_color: str
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    @computed_field
+    @property
+    def id(self) -> UUID:
+        return self.id_color
+
+    @computed_field
+    @property
+    def name(self) -> str:
+        return self.name_color
 
     model_config = ConfigDict(from_attributes=True)
 
 class SizeResponse(BaseModel):
     id_size: UUID
     name_size: str
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    @computed_field
+    @property
+    def id(self) -> UUID:
+        return self.id_size
+
+    @computed_field
+    @property
+    def name(self) -> str:
+        return self.name_size
 
     model_config = ConfigDict(from_attributes=True)
 
 class CategoryResponse(BaseModel):
     id_category: UUID
     name_category: str
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    @computed_field
+    @property
+    def id(self) -> UUID:
+        return self.id_category
+
+    @computed_field
+    @property
+    def name(self) -> str:
+        return self.name_category
 
     model_config = ConfigDict(from_attributes=True)
 
 class GenderResponse(BaseModel):
     id_gender: UUID
     name_gender: str
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    @computed_field
+    @property
+    def id(self) -> UUID:
+        return self.id_gender
+
+    @computed_field
+    @property
+    def name(self) -> str:
+        return self.name_gender
 
     model_config = ConfigDict(from_attributes=True)
