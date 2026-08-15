@@ -40,12 +40,12 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS (separados por coma si son múltiples)
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173,https://front-panalera.vercel.app"
 
     @property
     def cors_origins_list(self) -> List[str]:
         """Devuelve la lista de orígenes permitidos separados por coma."""
-        if not self.ALLOWED_ORIGINS:
+        if not self.ALLOWED_ORIGINS or self.ALLOWED_ORIGINS.strip() == "*":
             return ["*"]
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
 
