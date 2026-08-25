@@ -6,7 +6,7 @@ services:
     autoDeployTrigger: checksPass
     maxShutdownDelaySeconds: 30
     buildCommand: "pip install poetry==1.8.3 && poetry config virtualenvs.create false && poetry install --only main --sync"
-    preDeployCommand: "alembic upgrade head && python -m src.seed_db"
+    preDeployCommand: "alembic upgrade head"
     startCommand: "uvicorn src.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips=*"
     healthCheckPath: /health/ready
     envVars:
@@ -26,10 +26,6 @@ services:
         sync: false
       - key: SECRET_KEY
         generateValue: true
-      - key: BOOTSTRAP_ADMIN_USERNAME
-        value: admin
-      - key: BOOTSTRAP_ADMIN_PASSWORD
-        sync: false
       - key: DATABASE_URL
         sync: false
       - key: DB_POOL_SIZE

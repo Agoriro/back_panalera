@@ -91,7 +91,7 @@ Supabase aloja PostgreSQL y Render ejecuta FastAPI. Confirma límites y retenci�
      ```
    - **Pre-Deploy Command**:
      ```bash
-     alembic upgrade head && python -m src.seed_db
+     alembic upgrade head
      ```
    - **Start Command**:
      ```bash
@@ -104,8 +104,6 @@ Supabase aloja PostgreSQL y Render ejecuta FastAPI. Confirma límites y retenci�
 | :--- | :--- | :--- |
 | `DATABASE_URL` | *Pega la URI de Supabase* | URL de conexión de Supabase |
 | `SECRET_KEY` | *Genera un texto seguro de 32+ caracteres* | Firma para tokens JWT |
-| `BOOTSTRAP_ADMIN_USERNAME` | `admin` u otro nombre | Usuario administrador inicial |
-| `BOOTSTRAP_ADMIN_PASSWORD` | *Contraseña única de 12+ caracteres* | Contraseña inicial; nunca usar un valor conocido o compartido |
 | `ALGORITHM` | `HS256` | Algoritmo JWT |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Duración del token de acceso |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Duración del refresh token |
@@ -127,7 +125,7 @@ Supabase aloja PostgreSQL y Render ejecuta FastAPI. Confirma límites y retenci�
 
 Cuando Render inicia el servicio web:
 1. Se conecta a **Supabase** usando tu `DATABASE_URL`.
-2. En pre-deploy ejecuta `alembic upgrade head` y `python -m src.seed_db`.
+2. En pre-deploy ejecuta únicamente `alembic upgrade head`. El administrador existente no se modifica.
 3. Levanta Uvicorn con soporte de proxy. Render es el límite de confianza que entrega el IP real; no uses `--forwarded-allow-ips=*` fuera de una plataforma con proxy controlado.
 
 ---
