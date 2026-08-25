@@ -11,16 +11,21 @@ from src.application.dtos.movement_dto import (
 )
 from src.application.use_cases.movement_use_case import MovementUseCase
 from src.domain.entities.movement import MovementType
-from src.interfaces.api.dependencies.auth import is_authenticated
+from src.interfaces.api.dependencies.auth import Permission, has_permission
 from src.interfaces.api.dependencies.use_cases import get_movement_use_case
 
 router = APIRouter(
-    prefix="/movements", tags=["Movements"], dependencies=[Depends(is_authenticated)]
+    prefix="/movements",
+    tags=["Movements"],
+    dependencies=[Depends(has_permission(Permission.READ_DATA))],
 )
 
 
 @router.post(
-    "/purchase", response_model=MovementResponse, status_code=status.HTTP_201_CREATED
+    "/purchase",
+    response_model=MovementResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(has_permission(Permission.WRITE_MOVEMENTS))],
 )
 async def register_purchase(
     data: PurchaseCreate, use_case: MovementUseCase = Depends(get_movement_use_case)
@@ -29,7 +34,10 @@ async def register_purchase(
 
 
 @router.post(
-    "/sale", response_model=MovementResponse, status_code=status.HTTP_201_CREATED
+    "/sale",
+    response_model=MovementResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(has_permission(Permission.WRITE_MOVEMENTS))],
 )
 async def register_sale(
     data: SaleCreate, use_case: MovementUseCase = Depends(get_movement_use_case)

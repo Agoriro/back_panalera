@@ -9,11 +9,13 @@ from src.application.dtos.report_dto import (
     SalesReportResponse,
 )
 from src.application.use_cases.report_use_case import ReportUseCase
-from src.interfaces.api.dependencies.auth import is_authenticated
+from src.interfaces.api.dependencies.auth import Permission, has_permission
 from src.interfaces.api.dependencies.use_cases import get_report_use_case
 
 router = APIRouter(
-    prefix="/reports", tags=["Reports"], dependencies=[Depends(is_authenticated)]
+    prefix="/reports",
+    tags=["Reports"],
+    dependencies=[Depends(has_permission(Permission.READ_DATA))],
 )
 
 

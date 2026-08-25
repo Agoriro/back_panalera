@@ -5,11 +5,13 @@ from fastapi import APIRouter, Depends, status
 
 from src.application.dtos.role_dto import RoleCreate, RoleResponse, RoleUpdate
 from src.application.use_cases.role_use_case import RoleUseCase
-from src.interfaces.api.dependencies.auth import has_role, is_authenticated
+from src.interfaces.api.dependencies.auth import Permission, has_permission
 from src.interfaces.api.dependencies.use_cases import get_role_use_case
 
 router = APIRouter(
-    prefix="/roles", tags=["Roles"], dependencies=[Depends(is_authenticated)]
+    prefix="/roles",
+    tags=["Roles"],
+    dependencies=[Depends(has_permission(Permission.MANAGE_ROLES))],
 )
 
 
@@ -17,7 +19,6 @@ router = APIRouter(
     "",
     response_model=RoleResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(has_role("admin"))],
 )
 async def create_role(
     data: RoleCreate, use_case: RoleUseCase = Depends(get_role_use_case)
@@ -38,9 +39,7 @@ async def get_role(id: UUID, use_case: RoleUseCase = Depends(get_role_use_case))
     return await use_case.get_by_id(id)
 
 
-@router.put(
-    "/{id}", response_model=RoleResponse, dependencies=[Depends(has_role("admin"))]
-)
+@router.put("/{id}", response_model=RoleResponse)
 async def update_role(
     id: UUID, data: RoleUpdate, use_case: RoleUseCase = Depends(get_role_use_case)
 ):

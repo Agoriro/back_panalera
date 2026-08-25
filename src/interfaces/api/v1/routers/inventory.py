@@ -11,15 +11,22 @@ from src.application.dtos.inventory_dto import (
     InventoryUpdate,
 )
 from src.application.use_cases.inventory_use_case import InventoryUseCase
-from src.interfaces.api.dependencies.auth import is_authenticated
+from src.interfaces.api.dependencies.auth import Permission, has_permission
 from src.interfaces.api.dependencies.use_cases import get_inventory_use_case
 
 router = APIRouter(
-    prefix="/inventory", tags=["Inventory"], dependencies=[Depends(is_authenticated)]
+    prefix="/inventory",
+    tags=["Inventory"],
+    dependencies=[Depends(has_permission(Permission.READ_DATA))],
 )
 
 
-@router.post("", response_model=InventoryResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=InventoryResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(has_permission(Permission.WRITE_INVENTORY))],
+)
 async def create_inventory(
     data: InventoryCreate, use_case: InventoryUseCase = Depends(get_inventory_use_case)
 ):
@@ -59,7 +66,11 @@ async def get_inventory(
     return await use_case.get_by_id(id)
 
 
-@router.put("/{id}", response_model=InventoryResponse)
+@router.put(
+    "/{id}",
+    response_model=InventoryResponse,
+    dependencies=[Depends(has_permission(Permission.WRITE_INVENTORY))],
+)
 async def update_inventory(
     id: UUID,
     data: InventoryUpdate,
@@ -68,7 +79,11 @@ async def update_inventory(
     return await use_case.update(id, data)
 
 
-@router.patch("/{id}/toggle", response_model=InventoryResponse)
+@router.patch(
+    "/{id}/toggle",
+    response_model=InventoryResponse,
+    dependencies=[Depends(has_permission(Permission.WRITE_INVENTORY))],
+)
 async def toggle_inventory(
     id: UUID, use_case: InventoryUseCase = Depends(get_inventory_use_case)
 ):
@@ -79,6 +94,7 @@ async def toggle_inventory(
     "/{id}/photos",
     response_model=list[InventoryPhotoResponse],
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(has_permission(Permission.WRITE_INVENTORY))],
 )
 async def add_inventory_photos(
     id: UUID,
@@ -88,7 +104,11 @@ async def add_inventory_photos(
     return await use_case.add_photos(id, data)
 
 
-@router.delete("/{id}/photos/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{id}/photos/{photo_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(has_permission(Permission.WRITE_INVENTORY))],
+)
 async def delete_inventory_photo(
     id: UUID,
     photo_id: UUID,

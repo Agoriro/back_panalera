@@ -124,11 +124,9 @@ CREATE TABLE movements (
 
 INSERT INTO alembic_version (version_num) VALUES ('e18e2c160be2');
 
--- Seed Admin Role and User
+-- Seed only Admin role. Create administrator with seed_db.py and explicit
+-- BOOTSTRAP_ADMIN_USERNAME / BOOTSTRAP_ADMIN_PASSWORD environment variables.
 INSERT INTO roles (id_role, name) 
 VALUES ('a051e044-202f-43cf-a31c-be333a6e6be7', 'admin');
-
-INSERT INTO users (id_user, "user", password, id_role, is_active) 
-VALUES (gen_random_uuid(), 'admin', '$2b$12$vxipPFmlTslk8hQkCQ/zw.X2EfNo.2OCFfvXLHpIxHW8OgZ1CeQ7m', 'a051e044-202f-43cf-a31c-be333a6e6be7', true);
 
 COMMIT;

@@ -1,4 +1,5 @@
 # Paso 17: src/interfaces/api/dependencies/auth.py
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
@@ -15,7 +16,29 @@ from src.shared.exceptions.domain_exceptions import (
     UnauthorizedException,
 )
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
+
+
+class Permission(StrEnum):
+    READ_DATA = "read:data"
+    MANAGE_USERS = "manage:users"
+    MANAGE_ROLES = "manage:roles"
+    MANAGE_CATALOG = "manage:catalog"
+    WRITE_INVENTORY = "write:inventory"
+    WRITE_MOVEMENTS = "write:movements"
+
+
+ROLE_PERMISSIONS: dict[str, frozenset[Permission]] = {
+    "admin": frozenset(Permission),
+    "operator": frozenset(
+        {
+            Permission.READ_DATA,
+            Permission.WRITE_INVENTORY,
+            Permission.WRITE_MOVEMENTS,
+        }
+    ),
+    "consulta": frozenset({Permission.READ_DATA}),
+}
 
 
 def get_auth_user_repository(
@@ -25,10 +48,12 @@ def get_auth_user_repository(
 
 
 async def is_authenticated(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
     user_repo: IUserRepository = Depends(get_auth_user_repository),
 ) -> dict[str, Any]:
     """Dependencia que valida que el usuario está autenticado y devuelve el payload del token."""
+    if credentials is None:
+        raise UnauthorizedException("Credenciales no proporcionadas")
     token = credentials.credentials
     try:
         payload = verify_token(token, expected_type="access")
@@ -47,17 +72,16 @@ async def is_authenticated(
         raise
 
 
-def has_role(required_role: str):
-    """Fábrica de dependencias que valida si el usuario tiene un rol específico."""
+def has_permission(required_permission: Permission):
+    """Valida permisos derivados del rol vigente consultado en DB."""
 
-    async def role_checker(payload: dict[str, Any] = Depends(is_authenticated)):
-        role_name = payload.get("role")
-        if not role_name:
-            raise ForbiddenException("Rol no especificado en el token")
-
-        if role_name.lower() != required_role.lower():
-            raise ForbiddenException(f"Requiere el rol: {required_role}")
-
+    async def permission_checker(
+        payload: dict[str, Any] = Depends(is_authenticated),
+    ) -> bool:
+        role_name = str(payload.get("role", "")).strip().casefold()
+        permissions = ROLE_PERMISSIONS.get(role_name, frozenset())
+        if required_permission not in permissions:
+            raise ForbiddenException(f"Requiere permiso: {required_permission.value}")
         return True
 
-    return role_checker
+    return permission_checker

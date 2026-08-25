@@ -1,5 +1,5 @@
 # Paso 19: tests/integration/test_api.py
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from httpx import AsyncClient
@@ -95,6 +95,79 @@ async def test_login_refresh_rotation_and_disabled_user(
         headers={"Authorization": f"Bearer {tokens['access_token']}"},
     )
     assert protected_response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_endpoint_role_matrix(
+    async_client: AsyncClient, db_session: AsyncSession
+):
+    admin_role = RoleModel(id_role=uuid4(), name="Admin")
+    operator_role = RoleModel(id_role=uuid4(), name="Operator")
+    read_role = RoleModel(id_role=uuid4(), name="Consulta")
+    admin = UserModel(
+        id_user=uuid4(),
+        user="matrix-admin",
+        password="unused",
+        id_role=admin_role.id_role,
+        is_active=True,
+    )
+    operator = UserModel(
+        id_user=uuid4(),
+        user="matrix-operator",
+        password="unused",
+        id_role=operator_role.id_role,
+        is_active=True,
+    )
+    reader = UserModel(
+        id_user=uuid4(),
+        user="matrix-reader",
+        password="unused",
+        id_role=read_role.id_role,
+        is_active=True,
+    )
+    db_session.add_all([admin_role, operator_role, read_role, admin, operator, reader])
+    admin_id = admin.id_user
+    operator_id = operator.id_user
+    reader_id = reader.id_user
+    await db_session.commit()
+
+    def headers_for(user_id: UUID) -> dict[str, str]:
+        token = create_access_token({"sub": str(user_id)})
+        return {"Authorization": f"Bearer {token}"}
+
+    no_token_response = await async_client.get("/api/v1/inventory")
+    assert no_token_response.status_code == 401
+
+    admin_response = await async_client.get(
+        "/api/v1/users", headers=headers_for(admin_id)
+    )
+    assert admin_response.status_code == 200
+
+    operator_read = await async_client.get(
+        "/api/v1/catalog/colors", headers=headers_for(operator_id)
+    )
+    assert operator_read.status_code == 200
+    operator_catalog_write = await async_client.post(
+        "/api/v1/catalog/colors",
+        json={"name": "Azul"},
+        headers=headers_for(operator_id),
+    )
+    assert operator_catalog_write.status_code == 403
+    operator_inventory_write = await async_client.post(
+        "/api/v1/inventory", json={}, headers=headers_for(operator_id)
+    )
+    assert operator_inventory_write.status_code == 422
+
+    reader_write = await async_client.post(
+        "/api/v1/movements/sale",
+        json={"id_inventory": str(uuid4()), "quantity": 1},
+        headers=headers_for(reader_id),
+    )
+    assert reader_write.status_code == 403
+    reader_read = await async_client.get(
+        "/api/v1/movements", headers=headers_for(reader_id)
+    )
+    assert reader_read.status_code == 200
 
 
 # Aquí se agregarían más tests de integración:

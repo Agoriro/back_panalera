@@ -15,7 +15,7 @@ from src.application.dtos.catalog_dto import (
     SupplierUpdate,
 )
 from src.application.use_cases.catalog_use_case import CatalogUseCase
-from src.interfaces.api.dependencies.auth import is_authenticated
+from src.interfaces.api.dependencies.auth import Permission, has_permission
 from src.interfaces.api.dependencies.use_cases import (
     get_category_use_case,
     get_color_use_case,
@@ -25,13 +25,18 @@ from src.interfaces.api.dependencies.use_cases import (
 )
 
 router = APIRouter(
-    prefix="/catalog", tags=["Catalog"], dependencies=[Depends(is_authenticated)]
+    prefix="/catalog",
+    tags=["Catalog"],
+    dependencies=[Depends(has_permission(Permission.READ_DATA))],
 )
 
 
 # --- Suppliers ---
 @router.post(
-    "/suppliers", response_model=SupplierResponse, status_code=status.HTTP_201_CREATED
+    "/suppliers",
+    response_model=SupplierResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(has_permission(Permission.MANAGE_CATALOG))],
 )
 async def create_supplier(
     data: SupplierCreate, use_case: CatalogUseCase = Depends(get_supplier_use_case)
@@ -51,7 +56,11 @@ async def get_supplier(
     return await use_case.get_by_id(id)
 
 
-@router.put("/suppliers/{id}", response_model=SupplierResponse)
+@router.put(
+    "/suppliers/{id}",
+    response_model=SupplierResponse,
+    dependencies=[Depends(has_permission(Permission.MANAGE_CATALOG))],
+)
 async def update_supplier(
     id: UUID,
     data: SupplierUpdate,
@@ -60,7 +69,11 @@ async def update_supplier(
     return await use_case.update(id, data)
 
 
-@router.patch("/suppliers/{id}/toggle", response_model=SupplierResponse)
+@router.patch(
+    "/suppliers/{id}/toggle",
+    response_model=SupplierResponse,
+    dependencies=[Depends(has_permission(Permission.MANAGE_CATALOG))],
+)
 async def toggle_supplier(
     id: UUID, use_case: CatalogUseCase = Depends(get_supplier_use_case)
 ):
@@ -69,7 +82,10 @@ async def toggle_supplier(
 
 # --- Colors ---
 @router.post(
-    "/colors", response_model=ColorResponse, status_code=status.HTTP_201_CREATED
+    "/colors",
+    response_model=ColorResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(has_permission(Permission.MANAGE_CATALOG))],
 )
 async def create_color(
     data: BasicCatalogCreate, use_case: CatalogUseCase = Depends(get_color_use_case)
@@ -87,7 +103,11 @@ async def get_color(id: UUID, use_case: CatalogUseCase = Depends(get_color_use_c
     return await use_case.get_by_id(id)
 
 
-@router.put("/colors/{id}", response_model=ColorResponse)
+@router.put(
+    "/colors/{id}",
+    response_model=ColorResponse,
+    dependencies=[Depends(has_permission(Permission.MANAGE_CATALOG))],
+)
 async def update_color(
     id: UUID,
     data: BasicCatalogUpdate,
@@ -97,7 +117,12 @@ async def update_color(
 
 
 # --- Sizes ---
-@router.post("/sizes", response_model=SizeResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/sizes",
+    response_model=SizeResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(has_permission(Permission.MANAGE_CATALOG))],
+)
 async def create_size(
     data: BasicCatalogCreate, use_case: CatalogUseCase = Depends(get_size_use_case)
 ):
@@ -114,7 +139,11 @@ async def get_size(id: UUID, use_case: CatalogUseCase = Depends(get_size_use_cas
     return await use_case.get_by_id(id)
 
 
-@router.put("/sizes/{id}", response_model=SizeResponse)
+@router.put(
+    "/sizes/{id}",
+    response_model=SizeResponse,
+    dependencies=[Depends(has_permission(Permission.MANAGE_CATALOG))],
+)
 async def update_size(
     id: UUID,
     data: BasicCatalogUpdate,
@@ -125,7 +154,10 @@ async def update_size(
 
 # --- Categories ---
 @router.post(
-    "/categories", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED
+    "/categories",
+    response_model=CategoryResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(has_permission(Permission.MANAGE_CATALOG))],
 )
 async def create_category(
     data: BasicCatalogCreate, use_case: CatalogUseCase = Depends(get_category_use_case)
@@ -145,7 +177,11 @@ async def get_category(
     return await use_case.get_by_id(id)
 
 
-@router.put("/categories/{id}", response_model=CategoryResponse)
+@router.put(
+    "/categories/{id}",
+    response_model=CategoryResponse,
+    dependencies=[Depends(has_permission(Permission.MANAGE_CATALOG))],
+)
 async def update_category(
     id: UUID,
     data: BasicCatalogUpdate,
@@ -156,7 +192,10 @@ async def update_category(
 
 # --- Genders ---
 @router.post(
-    "/genders", response_model=GenderResponse, status_code=status.HTTP_201_CREATED
+    "/genders",
+    response_model=GenderResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(has_permission(Permission.MANAGE_CATALOG))],
 )
 async def create_gender(
     data: BasicCatalogCreate, use_case: CatalogUseCase = Depends(get_gender_use_case)
@@ -174,7 +213,11 @@ async def get_gender(id: UUID, use_case: CatalogUseCase = Depends(get_gender_use
     return await use_case.get_by_id(id)
 
 
-@router.put("/genders/{id}", response_model=GenderResponse)
+@router.put(
+    "/genders/{id}",
+    response_model=GenderResponse,
+    dependencies=[Depends(has_permission(Permission.MANAGE_CATALOG))],
+)
 async def update_gender(
     id: UUID,
     data: BasicCatalogUpdate,

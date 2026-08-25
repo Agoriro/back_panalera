@@ -5,11 +5,13 @@ from fastapi import APIRouter, Depends, status
 
 from src.application.dtos.user_dto import UserCreate, UserResponse, UserUpdate
 from src.application.use_cases.user_use_case import UserUseCase
-from src.interfaces.api.dependencies.auth import has_role, is_authenticated
+from src.interfaces.api.dependencies.auth import Permission, has_permission
 from src.interfaces.api.dependencies.use_cases import get_user_use_case
 
 router = APIRouter(
-    prefix="/users", tags=["Users"], dependencies=[Depends(is_authenticated)]
+    prefix="/users",
+    tags=["Users"],
+    dependencies=[Depends(has_permission(Permission.MANAGE_USERS))],
 )
 
 
@@ -17,7 +19,6 @@ router = APIRouter(
     "",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(has_role("admin"))],
 )
 async def create_user(
     data: UserCreate, use_case: UserUseCase = Depends(get_user_use_case)
@@ -38,9 +39,7 @@ async def get_user(id: UUID, use_case: UserUseCase = Depends(get_user_use_case))
     return await use_case.get_by_id(id)
 
 
-@router.put(
-    "/{id}", response_model=UserResponse, dependencies=[Depends(has_role("admin"))]
-)
+@router.put("/{id}", response_model=UserResponse)
 async def update_user(
     id: UUID, data: UserUpdate, use_case: UserUseCase = Depends(get_user_use_case)
 ):
@@ -51,7 +50,6 @@ async def update_user(
 @router.patch(
     "/{id}/toggle",
     response_model=UserResponse,
-    dependencies=[Depends(has_role("admin"))],
 )
 async def toggle_user_active(
     id: UUID, use_case: UserUseCase = Depends(get_user_use_case)
