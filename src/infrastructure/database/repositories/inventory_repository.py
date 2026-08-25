@@ -6,6 +6,7 @@ Implementación de repositorios de inventario.
 from uuid import UUID
 
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -16,6 +17,7 @@ from src.domain.repositories.inventory_repository import (
 from src.domain.repositories.inventory_repository import (
     InventoryRepository as IInventoryRepository,
 )
+from src.infrastructure.database.errors import translate_integrity_error
 from src.infrastructure.database.models.inventory import (
     InventoryModel,
     InventoryPhotoModel,
@@ -75,7 +77,10 @@ class InventoryRepository(BaseRepository[InventoryModel], IInventoryRepository):
         model = self._to_model(inventory)
         if not inventory.id_inventory:
             model.id_inventory = None
-        created_model = await super().create(model)
+        try:
+            created_model = await super().create(model)
+        except IntegrityError as exc:
+            raise translate_integrity_error(exc) from exc
         return self._to_entity(created_model)
 
     async def get_by_id(self, id_inventory: UUID) -> Inventory | None:
@@ -142,7 +147,10 @@ class InventoryRepository(BaseRepository[InventoryModel], IInventoryRepository):
     async def update(self, inventory: Inventory) -> Inventory:
         model = self._to_model(inventory)
         merged_model = await self.session.merge(model)
-        await self.session.flush()
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            raise translate_integrity_error(exc) from exc
         # Obtenemos de nuevo para cargar relaciones
         return await self.get_by_id(merged_model.id_inventory)
 
@@ -162,11 +170,18 @@ class InventoryPhotoRepository(
             updated_at=model.updated_at,
         )
 
+    async def get_by_id(self, id_reg: UUID) -> InventoryPhoto | None:
+        model = await super().get_by_id(id_reg)
+        return self._to_entity(model) if model else None
+
     async def create(self, photo: InventoryPhoto) -> InventoryPhoto:
         model = InventoryPhotoModel(
             id_inventory=photo.id_inventory, url_photo=photo.url_photo
         )
-        created_model = await super().create(model)
+        try:
+            created_model = await super().create(model)
+        except IntegrityError as exc:
+            raise translate_integrity_error(exc) from exc
         return self._to_entity(created_model)
 
     async def delete(self, id_reg: UUID) -> bool:

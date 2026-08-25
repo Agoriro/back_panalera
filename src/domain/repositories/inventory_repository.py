@@ -44,6 +44,10 @@ class InventoryRepository(ABC):
 
 class InventoryPhotoRepository(ABC):
     @abstractmethod
+    async def get_by_id(self, id_reg: UUID) -> InventoryPhoto | None:
+        pass
+
+    @abstractmethod
     async def create(self, photo: InventoryPhoto) -> InventoryPhoto:
         pass
 

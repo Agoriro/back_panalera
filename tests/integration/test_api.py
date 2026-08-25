@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infrastructure.database.models.catalog import (
@@ -13,7 +14,10 @@ from src.infrastructure.database.models.catalog import (
     SizeModel,
     SupplierModel,
 )
-from src.infrastructure.database.models.inventory import InventoryModel
+from src.infrastructure.database.models.inventory import (
+    InventoryModel,
+    InventoryPhotoModel,
+)
 from src.infrastructure.database.models.role import RoleModel
 from src.infrastructure.database.models.user import UserModel
 from src.infrastructure.security.jwt import create_access_token, create_refresh_token
@@ -254,6 +258,152 @@ async def test_stock_never_becomes_negative(
     )
     assert movements.status_code == 200
     assert [item["type_movement"] for item in movements.json()] == ["Sell", "Buy"]
+
+
+@pytest.mark.asyncio
+async def test_inventory_integrity_rules(
+    async_client: AsyncClient, db_session: AsyncSession
+):
+    role = RoleModel(id_role=uuid4(), name="Admin")
+    user = UserModel(
+        id_user=uuid4(),
+        user="inventory-admin",
+        password="unused",
+        id_role=role.id_role,
+        is_active=True,
+    )
+    supplier = SupplierModel(
+        id_supplier=uuid4(), name_supplier="Proveedor integridad", is_active=True
+    )
+    color = ColorModel(id_color=uuid4(), name_color="Verde")
+    size = SizeModel(id_size=uuid4(), name_size="L")
+    category = CategoryModel(id_category=uuid4(), name_category="Accesorios")
+    gender = GenderModel(id_gender=uuid4(), name_gender="Universal")
+    first_inventory = InventoryModel(
+        id_inventory=uuid4(),
+        description_inventory="Artículo uno",
+        code_inventory="SKU-UNICO",
+        barcode_inventory="BARCODE-UNICO",
+        utility=Decimal("0.20"),
+        id_supplier=supplier.id_supplier,
+        id_color=color.id_color,
+        id_size=size.id_size,
+        id_category=category.id_category,
+        id_gender=gender.id_gender,
+        is_active=True,
+    )
+    second_inventory = InventoryModel(
+        id_inventory=uuid4(),
+        description_inventory="Artículo dos",
+        utility=Decimal("0.20"),
+        id_supplier=supplier.id_supplier,
+        id_color=color.id_color,
+        id_size=size.id_size,
+        id_category=category.id_category,
+        id_gender=gender.id_gender,
+        is_active=True,
+    )
+    photo = InventoryPhotoModel(
+        id_reg=uuid4(),
+        id_inventory=first_inventory.id_inventory,
+        url_photo="https://example.com/photo.jpg",
+    )
+    db_session.add_all(
+        [
+            role,
+            user,
+            supplier,
+            color,
+            size,
+            category,
+            gender,
+            first_inventory,
+            second_inventory,
+            photo,
+        ]
+    )
+    user_id = user.id_user
+    supplier_id = supplier.id_supplier
+    color_id = color.id_color
+    size_id = size.id_size
+    category_id = category.id_category
+    gender_id = gender.id_gender
+    first_inventory_id = first_inventory.id_inventory
+    second_inventory_id = second_inventory.id_inventory
+    photo_id = photo.id_reg
+    await db_session.commit()
+    headers = {"Authorization": f"Bearer {create_access_token({'sub': str(user_id)})}"}
+    base_payload = {
+        "description_inventory": "Nuevo artículo",
+        "utility": "0.20",
+        "id_supplier": str(supplier_id),
+        "id_color": str(color_id),
+        "id_size": str(size_id),
+        "id_category": str(category_id),
+        "id_gender": str(gender_id),
+    }
+
+    duplicate_sku = await async_client.post(
+        "/api/v1/inventory",
+        json={**base_payload, "code_inventory": "SKU-UNICO"},
+        headers=headers,
+    )
+    assert duplicate_sku.status_code == 409
+    assert duplicate_sku.json()["detail"] == "El SKU ya existe"
+
+    duplicate_barcode = await async_client.post(
+        "/api/v1/inventory",
+        json={**base_payload, "barcode_inventory": "BARCODE-UNICO"},
+        headers=headers,
+    )
+    assert duplicate_barcode.status_code == 409
+    assert duplicate_barcode.json()["detail"] == "El código de barras ya existe"
+
+    invalid_relation = await async_client.put(
+        f"/api/v1/inventory/{second_inventory_id}",
+        json={"id_category": str(uuid4())},
+        headers=headers,
+    )
+    assert invalid_relation.status_code == 404
+    assert invalid_relation.json()["detail"] == "Category no encontrado"
+
+    cross_inventory_delete = await async_client.delete(
+        f"/api/v1/inventory/{second_inventory_id}/photos/{photo_id}",
+        headers=headers,
+    )
+    assert cross_inventory_delete.status_code == 404
+    persisted_photo = await db_session.scalar(
+        select(InventoryPhotoModel).where(InventoryPhotoModel.id_reg == photo_id)
+    )
+    assert persisted_photo is not None
+
+    invalid_photo_url = await async_client.post(
+        f"/api/v1/inventory/{second_inventory_id}/photos",
+        json={"url_photos": ["not-a-url"]},
+        headers=headers,
+    )
+    assert invalid_photo_url.status_code == 422
+
+    too_many_photos = await async_client.post(
+        f"/api/v1/inventory/{first_inventory_id}/photos",
+        json={
+            "url_photos": [
+                f"https://example.com/photo-{index}.jpg" for index in range(10)
+            ]
+        },
+        headers=headers,
+    )
+    assert too_many_photos.status_code == 422
+    assert too_many_photos.json()["detail"] == "Máximo 10 fotos por artículo"
+
+    normalized = await async_client.put(
+        f"/api/v1/inventory/{second_inventory_id}",
+        json={"code_inventory": "   ", "barcode_inventory": ""},
+        headers=headers,
+    )
+    assert normalized.status_code == 200
+    assert normalized.json()["code_inventory"] is None
+    assert normalized.json()["barcode_inventory"] is None
 
 
 # Aquí se agregarían más tests de integración:

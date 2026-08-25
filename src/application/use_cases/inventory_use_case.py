@@ -2,6 +2,7 @@
 from uuid import UUID
 
 from src.application.dtos.inventory_dto import (
+    MAX_INVENTORY_PHOTOS,
     InventoryCreate,
     InventoryPhotoCreate,
     InventoryPhotoResponse,
@@ -20,7 +21,10 @@ from src.domain.repositories.inventory_repository import (
     InventoryPhotoRepository,
     InventoryRepository,
 )
-from src.shared.exceptions.domain_exceptions import ResourceNotFoundException
+from src.shared.exceptions.domain_exceptions import (
+    BusinessRuleValidationException,
+    ResourceNotFoundException,
+)
 from src.shared.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -45,17 +49,19 @@ class InventoryUseCase:
         self.category_repo = category_repo
         self.gender_repo = gender_repo
 
-    async def _validate_relations(self, data):
-        if not await self.supplier_repo.get_by_id(data.id_supplier):
-            raise ResourceNotFoundException("Supplier no encontrado")
-        if not await self.color_repo.get_by_id(data.id_color):
-            raise ResourceNotFoundException("Color no encontrado")
-        if not await self.size_repo.get_by_id(data.id_size):
-            raise ResourceNotFoundException("Size no encontrado")
-        if not await self.category_repo.get_by_id(data.id_category):
-            raise ResourceNotFoundException("Category no encontrado")
-        if not await self.gender_repo.get_by_id(data.id_gender):
-            raise ResourceNotFoundException("Gender no encontrado")
+    async def _validate_relations(self, data) -> None:
+        relations = (
+            ("id_supplier", self.supplier_repo, "Supplier"),
+            ("id_color", self.color_repo, "Color"),
+            ("id_size", self.size_repo, "Size"),
+            ("id_category", self.category_repo, "Category"),
+            ("id_gender", self.gender_repo, "Gender"),
+        )
+        for field, repository, label in relations:
+            if field in data.model_fields_set and not await repository.get_by_id(
+                getattr(data, field)
+            ):
+                raise ResourceNotFoundException(f"{label} no encontrado")
 
     async def create(self, data: InventoryCreate) -> InventoryResponse:
         logger.info("Creando artículo en inventario", desc=data.description_inventory)
@@ -104,6 +110,7 @@ class InventoryUseCase:
         inventory = await self.inv_repo.get_by_id(id_inventory)
         if not inventory:
             raise ResourceNotFoundException("Artículo no encontrado")
+
         return InventoryResponse.model_validate(inventory)
 
     async def update(
@@ -113,11 +120,10 @@ class InventoryUseCase:
         if not inventory:
             raise ResourceNotFoundException("Artículo no encontrado")
 
+        await self._validate_relations(data)
+
         for key, value in data.model_dump(exclude_unset=True).items():
             setattr(inventory, key, value)
-
-        # Re-validar si se actualizaron las llaves foraneas (simplificado, se puede optimizar)
-        # asumiendo que el request envia datos válidos o falla la FK en DB (por Clean Arch es mejor validar antes)
 
         updated_inv = await self.inv_repo.update(inventory)
         return InventoryResponse.model_validate(updated_inv)
@@ -137,16 +143,25 @@ class InventoryUseCase:
         if not inventory:
             raise ResourceNotFoundException("Artículo no encontrado")
 
+        existing_photos = await self.photo_repo.get_by_inventory_id(id_inventory)
+        if len(existing_photos) + len(data.url_photos) > MAX_INVENTORY_PHOTOS:
+            raise BusinessRuleValidationException(
+                f"Máximo {MAX_INVENTORY_PHOTOS} fotos por artículo"
+            )
+
         photos = []
         for url in data.url_photos:
             photo = InventoryPhoto(
-                id_reg=None, id_inventory=id_inventory, url_photo=url
+                id_reg=None, id_inventory=id_inventory, url_photo=str(url)
             )  # type: ignore
             created_photo = await self.photo_repo.create(photo)
             photos.append(InventoryPhotoResponse.model_validate(created_photo))
         return photos
 
     async def delete_photo(self, id_inventory: UUID, id_photo: UUID) -> None:
+        photo = await self.photo_repo.get_by_id(id_photo)
+        if not photo or photo.id_inventory != id_inventory:
+            raise ResourceNotFoundException("Foto no encontrada para este artículo")
         deleted = await self.photo_repo.delete(id_photo)
         if not deleted:
             raise ResourceNotFoundException("Foto no encontrada")

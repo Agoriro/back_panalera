@@ -66,7 +66,10 @@ Los endpoints son operaciones CRUD clásicas (`GET`, `POST`, `PUT`, `DELETE`):
 Endpoint: `/inventory/`
 *   Para crear un producto, necesitas enviar los UUIDs (IDs) de las tablas de catálogos correspondientes (`id_supplier`, `id_color`, `id_size`, `id_category`, `id_gender`), la descripción, la **utilidad** y opcionalmente el código de producto (`code_inventory`) y código de barras (`barcode_inventory`).
 *   **Buscador Parcial Global**: `GET /inventory?search=texto` realiza una búsqueda en tiempo real (coincidencia parcial `ILIKE`) sobre la descripción, código de producto y código de barras.
-*   **Filtros Exactos**: `GET /inventory?code_inventory=...` o `GET /inventory?barcode_inventory=...` (ideal para lectores de código de barras). Ver detalle y ejemplos de código en [GUIA_INVENTARIO_CODIGOS.md](file:///c:/Users/EdwMar/Documents/Proyectos/Panalera/Back/back_panalera/GUIA_INVENTARIO_CODIGOS.md).
+*   **Filtros Exactos**: `GET /inventory?code_inventory=...` o `GET /inventory?barcode_inventory=...` (ideal para lectores de código de barras). Ver [GUIA_INVENTARIO_CODIGOS.md](GUIA_INVENTARIO_CODIGOS.md).
+*   `code_inventory` y `barcode_inventory` son únicos, admiten máximo 100 caracteres y convierten cadenas vacías en `null`. Un duplicado devuelve `409 Conflict`.
+*   Las relaciones de catálogo se validan al crear y actualizar. Un UUID inexistente devuelve `404 Not Found`.
+*   Las fotos deben usar URL `http`/`https`, con máximo 2048 caracteres. Cada artículo admite máximo 10 fotos. Una foto solo puede borrarse desde su propio artículo.
 *   El backend *no* calcula el precio final de venta como campo físico en la tabla de inventario, sino que la "utilidad" o los promedios se calculan dinámicamente según las compras de inventario (ver sección de Movimientos).
 
 ### C. Movimientos (Compras y Ventas)
