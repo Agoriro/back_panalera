@@ -83,6 +83,17 @@ poetry run pytest --cov=src tests/
 poetry run pytest -v
 ```
 
+Controles de calidad usados localmente y en CI:
+
+```bash
+poetry check --lock
+poetry run ruff check .
+poetry run ruff format --check .
+poetry run mypy src
+poetry run bandit -q -r src seed_db.py
+poetry run pytest --cov=src --cov-report=term-missing
+```
+
 ## 🚀 Instrucciones de Despliegue en Render (Render.com)
 
 El proyecto cuenta con un archivo `render.yaml` (Blueprint) listo para desplegar **tanto la base de datos PostgreSQL como la API backend** en **Render** con un solo clic.

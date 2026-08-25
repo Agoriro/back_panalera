@@ -1,9 +1,10 @@
 # Paso 14: src/application/dtos/report_dto.py
-from pydantic import BaseModel, ConfigDict
-from typing import List
-from uuid import UUID
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict
+
 
 class SaleReportItem(BaseModel):
     id_movement: UUID
@@ -16,16 +17,19 @@ class SaleReportItem(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class SalesReportResponse(BaseModel):
-    items: List[SaleReportItem]
+    items: list[SaleReportItem]
     total_revenue: Decimal
     total_profit: Decimal
+
 
 class InventoryReportItem(BaseModel):
     id_inventory: UUID
     total_bought: int
     total_sold: int
     current_stock: int
+
 
 class ProjectionReportItem(BaseModel):
     id_inventory: UUID

@@ -2,11 +2,13 @@
 """
 Interfaz de repositorio para la entidad Movement.
 """
+
 from abc import ABC, abstractmethod
-from typing import List, Optional
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
+
 from src.domain.entities.movement import Movement, MovementType
+
 
 class MovementRepository(ABC):
     @abstractmethod
@@ -14,12 +16,18 @@ class MovementRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_all(self, type_movement: Optional[MovementType] = None, 
-                      date_from: Optional[datetime] = None, date_to: Optional[datetime] = None,
-                      id_inventory: Optional[UUID] = None) -> List[Movement]:
+    async def get_all(
+        self,
+        type_movement: MovementType | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+        id_inventory: UUID | None = None,
+    ) -> list[Movement]:
         pass
 
     @abstractmethod
-    async def get_last_purchase_by_inventory(self, id_inventory: UUID) -> Optional[Movement]:
+    async def get_last_purchase_by_inventory(
+        self, id_inventory: UUID
+    ) -> Movement | None:
         """Obtiene la compra más reciente para un artículo específico, necesario para calcular el precio de venta."""
         pass

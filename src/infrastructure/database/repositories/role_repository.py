@@ -2,8 +2,9 @@
 """
 Implementación del repositorio de Role.
 """
-from typing import List, Optional
+
 from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +12,7 @@ from src.domain.entities.role import Role
 from src.domain.repositories.role_repository import RoleRepository as IRoleRepository
 from src.infrastructure.database.models.role import RoleModel
 from src.infrastructure.database.repositories.base_repository import BaseRepository
+
 
 class RoleRepository(BaseRepository[RoleModel], IRoleRepository):
     def __init__(self, session: AsyncSession):
@@ -30,17 +32,17 @@ class RoleRepository(BaseRepository[RoleModel], IRoleRepository):
         created_model = await super().create(model)
         return self._to_entity(created_model)
 
-    async def get_by_id(self, id_role: UUID) -> Optional[Role]:
+    async def get_by_id(self, id_role: UUID) -> Role | None:
         model = await super().get_by_id(id_role)
         return self._to_entity(model) if model else None
 
-    async def get_by_name(self, name: str) -> Optional[Role]:
+    async def get_by_name(self, name: str) -> Role | None:
         query = select(RoleModel).where(RoleModel.name == name)
         result = await self.session.execute(query)
         model = result.scalars().first()
         return self._to_entity(model) if model else None
 
-    async def get_all(self) -> List[Role]:
+    async def get_all(self) -> list[Role]:
         models = await super().get_all()
         return [self._to_entity(m) for m in models]
 

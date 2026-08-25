@@ -4,7 +4,6 @@ Módulo de configuración de la aplicación usando Pydantic Settings.
 Carga variables de entorno y proporciona valores predeterminados.
 """
 
-from typing import List
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -14,6 +13,7 @@ class Settings(BaseSettings):
     Clase de configuración principal.
     Las variables de entorno sobrescriben estos valores.
     """
+
     # Entorno
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
@@ -29,7 +29,9 @@ class Settings(BaseSettings):
             # asyncpg requiere el esquema postgresql+asyncpg://
             if v.startswith("postgres://"):
                 v = v.replace("postgres://", "postgresql+asyncpg://", 1)
-            elif v.startswith("postgresql://") and not v.startswith("postgresql+asyncpg://"):
+            elif v.startswith("postgresql://") and not v.startswith(
+                "postgresql+asyncpg://"
+            ):
                 v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
         return v
 
@@ -40,21 +42,25 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # CORS (separados por coma si son múltiples)
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173,https://front-panalera.vercel.app"
+    ALLOWED_ORIGINS: str = (
+        "http://localhost:3000,http://localhost:5173,https://front-panalera.vercel.app"
+    )
 
     @property
-    def cors_origins_list(self) -> List[str]:
+    def cors_origins_list(self) -> list[str]:
         """Devuelve la lista de orígenes permitidos separados por coma."""
         if not self.ALLOWED_ORIGINS or self.ALLOWED_ORIGINS.strip() == "*":
             return ["*"]
-        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
+        return [
+            origin.strip()
+            for origin in self.ALLOWED_ORIGINS.split(",")
+            if origin.strip()
+        ]
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
+
 
 # Instancia global de settings
 settings = Settings()
-

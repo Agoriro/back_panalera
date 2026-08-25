@@ -2,16 +2,20 @@
 """
 Implementación del repositorio de Movement.
 """
-from typing import List, Optional
-from uuid import UUID
+
 from datetime import datetime
-from sqlalchemy import select, desc
+from uuid import UUID
+
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.movement import Movement, MovementType
-from src.domain.repositories.movement_repository import MovementRepository as IMovementRepository
+from src.domain.repositories.movement_repository import (
+    MovementRepository as IMovementRepository,
+)
 from src.infrastructure.database.models.movement import MovementModel
 from src.infrastructure.database.repositories.base_repository import BaseRepository
+
 
 class MovementRepository(BaseRepository[MovementModel], IMovementRepository):
     def __init__(self, session: AsyncSession):
@@ -27,7 +31,7 @@ class MovementRepository(BaseRepository[MovementModel], IMovementRepository):
             quantity=model.quantity,
             value=model.value,
             created_at=model.created_at,
-            updated_at=model.updated_at
+            updated_at=model.updated_at,
         )
 
     def _to_model(self, entity: Movement) -> MovementModel:
@@ -38,7 +42,7 @@ class MovementRepository(BaseRepository[MovementModel], IMovementRepository):
             id_supplier=entity.id_supplier,
             id_inventory=entity.id_inventory,
             quantity=entity.quantity,
-            value=entity.value
+            value=entity.value,
         )
 
     async def create(self, movement: Movement) -> Movement:
@@ -48,11 +52,15 @@ class MovementRepository(BaseRepository[MovementModel], IMovementRepository):
         created_model = await super().create(model)
         return self._to_entity(created_model)
 
-    async def get_all(self, type_movement: Optional[MovementType] = None, 
-                      date_from: Optional[datetime] = None, date_to: Optional[datetime] = None,
-                      id_inventory: Optional[UUID] = None) -> List[Movement]:
+    async def get_all(
+        self,
+        type_movement: MovementType | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+        id_inventory: UUID | None = None,
+    ) -> list[Movement]:
         query = select(MovementModel)
-        
+
         if type_movement:
             query = query.where(MovementModel.type_movement == type_movement)
         if date_from:
@@ -61,12 +69,14 @@ class MovementRepository(BaseRepository[MovementModel], IMovementRepository):
             query = query.where(MovementModel.date <= date_to)
         if id_inventory:
             query = query.where(MovementModel.id_inventory == id_inventory)
-            
+
         query = query.order_by(desc(MovementModel.date))
         result = await self.session.execute(query)
         return [self._to_entity(m) for m in result.scalars().all()]
 
-    async def get_last_purchase_by_inventory(self, id_inventory: UUID) -> Optional[Movement]:
+    async def get_last_purchase_by_inventory(
+        self, id_inventory: UUID
+    ) -> Movement | None:
         query = (
             select(MovementModel)
             .where(MovementModel.id_inventory == id_inventory)

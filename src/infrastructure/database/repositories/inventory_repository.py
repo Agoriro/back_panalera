@@ -2,30 +2,43 @@
 """
 Implementación de repositorios de inventario.
 """
-from typing import List, Optional
+
 from uuid import UUID
-from sqlalchemy import select, or_
+
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.domain.entities.inventory import Inventory, InventoryPhoto
 from src.domain.repositories.inventory_repository import (
-    InventoryRepository as IInventoryRepository,
-    InventoryPhotoRepository as IInventoryPhotoRepository
+    InventoryPhotoRepository as IInventoryPhotoRepository,
 )
-from src.infrastructure.database.models.inventory import InventoryModel, InventoryPhotoModel
+from src.domain.repositories.inventory_repository import (
+    InventoryRepository as IInventoryRepository,
+)
+from src.infrastructure.database.models.inventory import (
+    InventoryModel,
+    InventoryPhotoModel,
+)
 from src.infrastructure.database.repositories.base_repository import BaseRepository
+
 
 class InventoryRepository(BaseRepository[InventoryModel], IInventoryRepository):
     def __init__(self, session: AsyncSession):
         super().__init__(InventoryModel, session)
 
     def _to_entity(self, model: InventoryModel) -> Inventory:
-        photos = [InventoryPhoto(
-            id_reg=p.id_reg, id_inventory=p.id_inventory, url_photo=p.url_photo, 
-            created_at=p.created_at, updated_at=p.updated_at
-        ) for p in getattr(model, 'photos', [])]
-        
+        photos = [
+            InventoryPhoto(
+                id_reg=p.id_reg,
+                id_inventory=p.id_inventory,
+                url_photo=p.url_photo,
+                created_at=p.created_at,
+                updated_at=p.updated_at,
+            )
+            for p in getattr(model, "photos", [])
+        ]
+
         return Inventory(
             id_inventory=model.id_inventory,
             description_inventory=model.description_inventory,
@@ -40,7 +53,7 @@ class InventoryRepository(BaseRepository[InventoryModel], IInventoryRepository):
             barcode_inventory=model.barcode_inventory,
             created_at=model.created_at,
             updated_at=model.updated_at,
-            photos=photos
+            photos=photos,
         )
 
     def _to_model(self, entity: Inventory) -> InventoryModel:
@@ -65,35 +78,53 @@ class InventoryRepository(BaseRepository[InventoryModel], IInventoryRepository):
         created_model = await super().create(model)
         return self._to_entity(created_model)
 
-    async def get_by_id(self, id_inventory: UUID) -> Optional[Inventory]:
-        query = select(InventoryModel).options(selectinload(InventoryModel.photos)).where(InventoryModel.id_inventory == id_inventory)
+    async def get_by_id(self, id_inventory: UUID) -> Inventory | None:
+        query = (
+            select(InventoryModel)
+            .options(selectinload(InventoryModel.photos))
+            .where(InventoryModel.id_inventory == id_inventory)
+        )
         result = await self.session.execute(query)
         model = result.scalars().first()
         return self._to_entity(model) if model else None
 
-    async def get_all(self, category_id: Optional[UUID] = None, gender_id: Optional[UUID] = None, 
-                      color_id: Optional[UUID] = None, size_id: Optional[UUID] = None, 
-                      is_active: Optional[bool] = None, code_inventory: Optional[str] = None,
-                      barcode_inventory: Optional[str] = None, search: Optional[str] = None) -> List[Inventory]:
+    async def get_all(
+        self,
+        category_id: UUID | None = None,
+        gender_id: UUID | None = None,
+        color_id: UUID | None = None,
+        size_id: UUID | None = None,
+        is_active: bool | None = None,
+        code_inventory: str | None = None,
+        barcode_inventory: str | None = None,
+        search: str | None = None,
+    ) -> list[Inventory]:
         query = select(InventoryModel).options(selectinload(InventoryModel.photos))
-        if category_id: query = query.where(InventoryModel.id_category == category_id)
-        if gender_id: query = query.where(InventoryModel.id_gender == gender_id)
-        if color_id: query = query.where(InventoryModel.id_color == color_id)
-        if size_id: query = query.where(InventoryModel.id_size == size_id)
-        if is_active is not None: query = query.where(InventoryModel.is_active == is_active)
-        if code_inventory: query = query.where(InventoryModel.code_inventory == code_inventory)
-        if barcode_inventory: query = query.where(InventoryModel.barcode_inventory == barcode_inventory)
-        
+        if category_id:
+            query = query.where(InventoryModel.id_category == category_id)
+        if gender_id:
+            query = query.where(InventoryModel.id_gender == gender_id)
+        if color_id:
+            query = query.where(InventoryModel.id_color == color_id)
+        if size_id:
+            query = query.where(InventoryModel.id_size == size_id)
+        if is_active is not None:
+            query = query.where(InventoryModel.is_active == is_active)
+        if code_inventory:
+            query = query.where(InventoryModel.code_inventory == code_inventory)
+        if barcode_inventory:
+            query = query.where(InventoryModel.barcode_inventory == barcode_inventory)
+
         if search and search.strip():
             search_pattern = f"%{search.strip()}%"
             query = query.where(
                 or_(
                     InventoryModel.description_inventory.ilike(search_pattern),
                     InventoryModel.code_inventory.ilike(search_pattern),
-                    InventoryModel.barcode_inventory.ilike(search_pattern)
+                    InventoryModel.barcode_inventory.ilike(search_pattern),
                 )
             )
-        
+
         result = await self.session.execute(query)
         return [self._to_entity(m) for m in result.scalars().all()]
 
@@ -105,7 +136,9 @@ class InventoryRepository(BaseRepository[InventoryModel], IInventoryRepository):
         return await self.get_by_id(merged_model.id_inventory)
 
 
-class InventoryPhotoRepository(BaseRepository[InventoryPhotoModel], IInventoryPhotoRepository):
+class InventoryPhotoRepository(
+    BaseRepository[InventoryPhotoModel], IInventoryPhotoRepository
+):
     def __init__(self, session: AsyncSession):
         super().__init__(InventoryPhotoModel, session)
 
@@ -115,11 +148,13 @@ class InventoryPhotoRepository(BaseRepository[InventoryPhotoModel], IInventoryPh
             id_inventory=model.id_inventory,
             url_photo=model.url_photo,
             created_at=model.created_at,
-            updated_at=model.updated_at
+            updated_at=model.updated_at,
         )
 
     async def create(self, photo: InventoryPhoto) -> InventoryPhoto:
-        model = InventoryPhotoModel(id_inventory=photo.id_inventory, url_photo=photo.url_photo)
+        model = InventoryPhotoModel(
+            id_inventory=photo.id_inventory, url_photo=photo.url_photo
+        )
         created_model = await super().create(model)
         return self._to_entity(created_model)
 
@@ -131,7 +166,9 @@ class InventoryPhotoRepository(BaseRepository[InventoryPhotoModel], IInventoryPh
             return True
         return False
 
-    async def get_by_inventory_id(self, id_inventory: UUID) -> List[InventoryPhoto]:
-        query = select(InventoryPhotoModel).where(InventoryPhotoModel.id_inventory == id_inventory)
+    async def get_by_inventory_id(self, id_inventory: UUID) -> list[InventoryPhoto]:
+        query = select(InventoryPhotoModel).where(
+            InventoryPhotoModel.id_inventory == id_inventory
+        )
         result = await self.session.execute(query)
         return [self._to_entity(m) for m in result.scalars().all()]

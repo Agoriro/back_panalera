@@ -2,10 +2,12 @@
 """
 Interfaz de repositorio para la entidad Role.
 """
+
 from abc import ABC, abstractmethod
-from typing import List, Optional
 from uuid import UUID
+
 from src.domain.entities.role import Role
+
 
 class RoleRepository(ABC):
     @abstractmethod
@@ -13,15 +15,15 @@ class RoleRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_id(self, id_role: UUID) -> Optional[Role]:
+    async def get_by_id(self, id_role: UUID) -> Role | None:
         pass
 
     @abstractmethod
-    async def get_by_name(self, name: str) -> Optional[Role]:
+    async def get_by_name(self, name: str) -> Role | None:
         pass
 
     @abstractmethod
-    async def get_all(self) -> List[Role]:
+    async def get_all(self) -> list[Role]:
         pass
 
     @abstractmethod

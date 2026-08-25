@@ -2,44 +2,49 @@
 """
 Entidades de dominio del catálogo (Supplier, Color, Size, Category, Gender).
 """
+
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
+
 
 @dataclass
 class Supplier:
-    id_supplier: Optional[UUID] = None
+    id_supplier: UUID | None = None
     name_supplier: str = ""
-    address: Optional[str] = None
+    address: str | None = None
     is_active: bool = True
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
 
 @dataclass
 class Color:
-    id_color: Optional[UUID] = None
+    id_color: UUID | None = None
     name_color: str = ""
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
 
 @dataclass
 class Size:
-    id_size: Optional[UUID] = None
+    id_size: UUID | None = None
     name_size: str = ""
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
 
 @dataclass
 class Category:
-    id_category: Optional[UUID] = None
+    id_category: UUID | None = None
     name_category: str = ""
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
 
 @dataclass
 class Gender:
-    id_gender: Optional[UUID] = None
+    id_gender: UUID | None = None
     name_gender: str = ""
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None

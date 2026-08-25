@@ -1,13 +1,17 @@
 # Paso 15: src/application/use_cases/role_use_case.py
-from typing import List
 from uuid import UUID
-from src.application.dtos.role_dto import RoleCreate, RoleUpdate, RoleResponse
+
+from src.application.dtos.role_dto import RoleCreate, RoleResponse, RoleUpdate
 from src.domain.entities.role import Role
 from src.domain.repositories.role_repository import RoleRepository
-from src.shared.exceptions.domain_exceptions import ResourceNotFoundException, ResourceAlreadyExistsException
+from src.shared.exceptions.domain_exceptions import (
+    ResourceAlreadyExistsException,
+    ResourceNotFoundException,
+)
 from src.shared.logging.logger import get_logger
 
 logger = get_logger(__name__)
+
 
 class RoleUseCase:
     def __init__(self, role_repo: RoleRepository):
@@ -18,13 +22,13 @@ class RoleUseCase:
         existing = await self.role_repo.get_by_name(data.name)
         if existing:
             raise ResourceAlreadyExistsException(f"El rol {data.name} ya existe")
-            
-        role = Role(id_role=None, name=data.name) # type: ignore
+
+        role = Role(id_role=None, name=data.name)  # type: ignore
         created_role = await self.role_repo.create(role)
         logger.info("Rol creado exitosamente", id=str(created_role.id_role))
         return RoleResponse.model_validate(created_role)
 
-    async def get_all(self) -> List[RoleResponse]:
+    async def get_all(self) -> list[RoleResponse]:
         roles = await self.role_repo.get_all()
         return [RoleResponse.model_validate(r) for r in roles]
 
@@ -39,7 +43,7 @@ class RoleUseCase:
         role = await self.role_repo.get_by_id(id_role)
         if not role:
             raise ResourceNotFoundException("Rol no encontrado")
-            
+
         existing = await self.role_repo.get_by_name(data.name)
         if existing and existing.id_role != id_role:
             raise ResourceAlreadyExistsException(f"El rol {data.name} ya existe")

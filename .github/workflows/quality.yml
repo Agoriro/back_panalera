@@ -1,0 +1,39 @@
+name: Quality
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: sqlite+aiosqlite:///:memory:
+      SECRET_KEY: test-secret-key-not-for-production
+      ENVIRONMENT: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: snok/install-poetry@v1
+        with:
+          version: "1.8.3"
+          virtualenvs-create: true
+      - name: Verify lock file
+        run: poetry check --lock
+      - name: Install dependencies
+        run: poetry install --with dev
+      - name: Ruff
+        run: poetry run ruff check .
+      - name: Ruff format
+        run: poetry run ruff format --check .
+      - name: Mypy
+        # Deuda heredada documentada en QUALITY_BASELINE.md. Se endurecerá en
+        # la fase de calidad sin ocultar el resultado durante la transición.
+        continue-on-error: true
+        run: poetry run mypy src
+      - name: Bandit
+        run: poetry run bandit -q -r src seed_db.py
+      - name: Tests
+        run: poetry run pytest --cov=src --cov-report=term-missing
