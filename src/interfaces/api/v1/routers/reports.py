@@ -1,7 +1,7 @@
 # Paso 16: src/interfaces/api/v1/routers/reports.py
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from src.application.dtos.report_dto import (
     InventoryReportItem,
@@ -23,10 +23,12 @@ router = APIRouter(
 async def get_sales_report(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
     use_case: ReportUseCase = Depends(get_report_use_case),
 ):
     """Genera un reporte de ventas en un periodo determinado."""
-    return await use_case.get_sales_report(date_from, date_to)
+    return await use_case.get_sales_report(date_from, date_to, page, page_size)
 
 
 @router.get("/inventory", response_model=list[InventoryReportItem])

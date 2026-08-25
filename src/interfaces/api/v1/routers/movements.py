@@ -2,13 +2,14 @@
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from src.application.dtos.movement_dto import (
     MovementResponse,
     PurchaseCreate,
     SaleCreate,
 )
+from src.application.dtos.pagination_dto import Page
 from src.application.use_cases.movement_use_case import MovementUseCase
 from src.domain.entities.movement import MovementType
 from src.interfaces.api.dependencies.auth import Permission, has_permission
@@ -45,12 +46,16 @@ async def register_sale(
     return await use_case.register_sale(data)
 
 
-@router.get("", response_model=list[MovementResponse])
+@router.get("", response_model=Page[MovementResponse])
 async def get_movements(
     type: MovementType | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     id_inventory: UUID | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
     use_case: MovementUseCase = Depends(get_movement_use_case),
 ):
-    return await use_case.get_all(type, date_from, date_to, id_inventory)
+    return await use_case.get_all(
+        type, date_from, date_to, id_inventory, page, page_size
+    )

@@ -9,6 +9,7 @@ from src.application.dtos.inventory_dto import (
     InventoryResponse,
     InventoryUpdate,
 )
+from src.application.dtos.pagination_dto import Page, build_page
 from src.domain.entities.inventory import Inventory, InventoryPhoto
 from src.domain.repositories.catalog_repository import (
     CategoryRepository,
@@ -93,8 +94,10 @@ class InventoryUseCase:
         code_inventory: str | None = None,
         barcode_inventory: str | None = None,
         search: str | None = None,
-    ) -> list[InventoryResponse]:
-        inventories = await self.inv_repo.get_all(
+        page: int = 1,
+        page_size: int = 50,
+    ) -> Page[InventoryResponse]:
+        inventories, total = await self.inv_repo.get_all(
             category_id,
             gender_id,
             color_id,
@@ -103,8 +106,11 @@ class InventoryUseCase:
             code_inventory,
             barcode_inventory,
             search,
+            offset=(page - 1) * page_size,
+            limit=page_size,
         )
-        return [InventoryResponse.model_validate(i) for i in inventories]
+        items = [InventoryResponse.model_validate(i) for i in inventories]
+        return build_page(items, total, page, page_size)
 
     async def get_by_id(self, id_inventory: UUID) -> InventoryResponse:
         inventory = await self.inv_repo.get_by_id(id_inventory)

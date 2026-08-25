@@ -3,7 +3,8 @@
 Implementación del repositorio de Movement.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import case, desc, func, select
@@ -22,14 +23,20 @@ class MovementRepository(BaseRepository[MovementModel], IMovementRepository):
         super().__init__(MovementModel, session)
 
     def _to_entity(self, model: MovementModel) -> Movement:
+        movement_date = model.date
+        if movement_date.tzinfo is None:
+            movement_date = movement_date.replace(tzinfo=UTC)
+        else:
+            movement_date = movement_date.astimezone(UTC)
         return Movement(
             id_movement=model.id_movement,
             type_movement=model.type_movement,
-            date=model.date,
+            date=movement_date,
             id_supplier=model.id_supplier,
             id_inventory=model.id_inventory,
             quantity=model.quantity,
             value=model.value,
+            unit_cost=model.unit_cost,
             created_at=model.created_at,
             updated_at=model.updated_at,
         )
@@ -43,6 +50,7 @@ class MovementRepository(BaseRepository[MovementModel], IMovementRepository):
             id_inventory=entity.id_inventory,
             quantity=entity.quantity,
             value=entity.value,
+            unit_cost=entity.unit_cost,
         )
 
     async def create(self, movement: Movement) -> Movement:
@@ -58,21 +66,32 @@ class MovementRepository(BaseRepository[MovementModel], IMovementRepository):
         date_from: datetime | None = None,
         date_to: datetime | None = None,
         id_inventory: UUID | None = None,
-    ) -> list[Movement]:
-        query = select(MovementModel)
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[Movement], int]:
+        filters = []
 
         if type_movement:
-            query = query.where(MovementModel.type_movement == type_movement)
+            filters.append(MovementModel.type_movement == type_movement)
         if date_from:
-            query = query.where(MovementModel.date >= date_from)
+            filters.append(MovementModel.date >= date_from)
         if date_to:
-            query = query.where(MovementModel.date <= date_to)
+            filters.append(MovementModel.date < date_to)
         if id_inventory:
-            query = query.where(MovementModel.id_inventory == id_inventory)
+            filters.append(MovementModel.id_inventory == id_inventory)
 
-        query = query.order_by(desc(MovementModel.date))
+        total = await self.session.scalar(
+            select(func.count()).select_from(MovementModel).where(*filters)
+        )
+        query = (
+            select(MovementModel)
+            .where(*filters)
+            .order_by(desc(MovementModel.date), desc(MovementModel.id_movement))
+            .offset(offset)
+            .limit(limit)
+        )
         result = await self.session.execute(query)
-        return [self._to_entity(m) for m in result.scalars().all()]
+        return [self._to_entity(m) for m in result.scalars().all()], int(total or 0)
 
     async def get_last_purchase_by_inventory(
         self, id_inventory: UUID
@@ -98,3 +117,89 @@ class MovementRepository(BaseRepository[MovementModel], IMovementRepository):
         )
         result = await self.session.execute(query)
         return int(result.scalar_one())
+
+    async def get_sales_report(
+        self,
+        date_from: datetime | None,
+        date_to: datetime | None,
+        offset: int,
+        limit: int,
+    ) -> tuple[list[Movement], int, Decimal, Decimal]:
+        filters = [MovementModel.type_movement == MovementType.SELL]
+        if date_from:
+            filters.append(MovementModel.date >= date_from)
+        if date_to:
+            filters.append(MovementModel.date < date_to)
+        totals_query = select(
+            func.count(),
+            func.coalesce(func.sum(MovementModel.value * MovementModel.quantity), 0),
+            func.coalesce(
+                func.sum(
+                    (MovementModel.value - MovementModel.unit_cost)
+                    * MovementModel.quantity
+                ),
+                0,
+            ),
+        ).where(*filters)
+        total, revenue, profit = (await self.session.execute(totals_query)).one()
+        query = (
+            select(MovementModel)
+            .where(*filters)
+            .order_by(desc(MovementModel.date), desc(MovementModel.id_movement))
+            .offset(offset)
+            .limit(limit)
+        )
+        result = await self.session.execute(query)
+        sales = [self._to_entity(model) for model in result.scalars().all()]
+        return sales, int(total), Decimal(revenue), Decimal(profit)
+
+    async def get_inventory_report(self) -> list[tuple[UUID, int, int, int]]:
+        from src.infrastructure.database.models.inventory import InventoryModel
+
+        bought = func.coalesce(
+            func.sum(
+                case(
+                    (
+                        MovementModel.type_movement == MovementType.BUY,
+                        MovementModel.quantity,
+                    ),
+                    else_=0,
+                )
+            ),
+            0,
+        )
+        sold = func.coalesce(
+            func.sum(
+                case(
+                    (
+                        MovementModel.type_movement == MovementType.SELL,
+                        MovementModel.quantity,
+                    ),
+                    else_=0,
+                )
+            ),
+            0,
+        )
+        query = (
+            select(InventoryModel.id_inventory, bought, sold, bought - sold)
+            .outerjoin(
+                MovementModel, MovementModel.id_inventory == InventoryModel.id_inventory
+            )
+            .group_by(InventoryModel.id_inventory)
+            .order_by(InventoryModel.id_inventory)
+        )
+        rows = (await self.session.execute(query)).all()
+        return [(row[0], int(row[1]), int(row[2]), int(row[3])) for row in rows]
+
+    async def get_projection_report(
+        self, date_from: datetime
+    ) -> list[tuple[UUID, int]]:
+        query = (
+            select(MovementModel.id_inventory, func.sum(MovementModel.quantity))
+            .where(MovementModel.type_movement == MovementType.SELL)
+            .where(MovementModel.date >= date_from)
+            .group_by(MovementModel.id_inventory)
+            .order_by(MovementModel.id_inventory)
+        )
+        rows = (await self.session.execute(query)).all()
+        return [(row[0], int(row[1])) for row in rows]

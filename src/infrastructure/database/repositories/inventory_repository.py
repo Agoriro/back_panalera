@@ -5,7 +5,7 @@ Implementación de repositorios de inventario.
 
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -114,7 +114,9 @@ class InventoryRepository(BaseRepository[InventoryModel], IInventoryRepository):
         code_inventory: str | None = None,
         barcode_inventory: str | None = None,
         search: str | None = None,
-    ) -> list[Inventory]:
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[Inventory], int]:
         query = select(InventoryModel).options(selectinload(InventoryModel.photos))
         if category_id:
             query = query.where(InventoryModel.id_category == category_id)
@@ -141,8 +143,12 @@ class InventoryRepository(BaseRepository[InventoryModel], IInventoryRepository):
                 )
             )
 
+        total = await self.session.scalar(
+            select(func.count()).select_from(query.order_by(None).subquery())
+        )
+        query = query.order_by(InventoryModel.id_inventory).offset(offset).limit(limit)
         result = await self.session.execute(query)
-        return [self._to_entity(m) for m in result.scalars().all()]
+        return [self._to_entity(m) for m in result.scalars().all()], int(total or 0)
 
     async def update(self, inventory: Inventory) -> Inventory:
         model = self._to_model(inventory)

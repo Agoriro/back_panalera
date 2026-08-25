@@ -10,6 +10,7 @@ from src.application.dtos.inventory_dto import (
     InventoryResponse,
     InventoryUpdate,
 )
+from src.application.dtos.pagination_dto import Page
 from src.application.use_cases.inventory_use_case import InventoryUseCase
 from src.interfaces.api.dependencies.auth import Permission, has_permission
 from src.interfaces.api.dependencies.use_cases import get_inventory_use_case
@@ -33,7 +34,7 @@ async def create_inventory(
     return await use_case.create(data)
 
 
-@router.get("", response_model=list[InventoryResponse])
+@router.get("", response_model=Page[InventoryResponse])
 async def get_inventories(
     category: UUID | None = None,
     gender: UUID | None = None,
@@ -45,6 +46,8 @@ async def get_inventories(
     search: str | None = Query(
         None, description="Búsqueda parcial en descripción, código o código de barras"
     ),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
     use_case: InventoryUseCase = Depends(get_inventory_use_case),
 ):
     return await use_case.get_all(
@@ -56,6 +59,8 @@ async def get_inventories(
         code_inventory,
         barcode_inventory,
         search,
+        page,
+        page_size,
     )
 
 

@@ -23,7 +23,7 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_all(self) -> list[User]:
+    async def get_all(self, offset: int = 0, limit: int = 50) -> tuple[list[User], int]:
         pass
 
     @abstractmethod

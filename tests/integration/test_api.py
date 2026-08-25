@@ -152,9 +152,12 @@ async def test_endpoint_role_matrix(
     assert no_token_response.status_code == 401
 
     admin_response = await async_client.get(
-        "/api/v1/users", headers=headers_for(admin_id)
+        "/api/v1/users?page=1&page_size=2", headers=headers_for(admin_id)
     )
     assert admin_response.status_code == 200
+    assert admin_response.json()["total"] == 3
+    assert len(admin_response.json()["items"]) == 2
+    assert admin_response.json()["pages"] == 2
 
     operator_read = await async_client.get(
         "/api/v1/catalog/colors", headers=headers_for(operator_id)
@@ -181,6 +184,39 @@ async def test_endpoint_role_matrix(
         "/api/v1/movements", headers=headers_for(reader_id)
     )
     assert reader_read.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_users_pagination_handles_large_dataset(
+    async_client: AsyncClient, db_session: AsyncSession
+):
+    role = RoleModel(id_role=uuid4(), name="Admin")
+    users = [
+        UserModel(
+            id_user=uuid4(),
+            user=f"bulk-user-{index:03d}",
+            password="unused",
+            id_role=role.id_role,
+            is_active=True,
+        )
+        for index in range(105)
+    ]
+    db_session.add(role)
+    db_session.add_all(users)
+    authenticated_user_id = users[0].id_user
+    await db_session.commit()
+    headers = {
+        "Authorization": f"Bearer {create_access_token({'sub': str(authenticated_user_id)})}"
+    }
+
+    response = await async_client.get(
+        "/api/v1/users?page=3&page_size=50", headers=headers
+    )
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 105
+    assert response.json()["pages"] == 3
+    assert len(response.json()["items"]) == 5
 
 
 @pytest.mark.asyncio
@@ -213,10 +249,34 @@ async def test_stock_never_becomes_negative(
         id_gender=gender.id_gender,
         is_active=True,
     )
-    db_session.add_all([role, user, supplier, color, size, category, gender, inventory])
+    inventory_without_movements = InventoryModel(
+        id_inventory=uuid4(),
+        description_inventory="Sin movimientos",
+        utility=Decimal("0.25"),
+        id_supplier=supplier.id_supplier,
+        id_color=color.id_color,
+        id_size=size.id_size,
+        id_category=category.id_category,
+        id_gender=gender.id_gender,
+        is_active=True,
+    )
+    db_session.add_all(
+        [
+            role,
+            user,
+            supplier,
+            color,
+            size,
+            category,
+            gender,
+            inventory,
+            inventory_without_movements,
+        ]
+    )
     user_id = user.id_user
     supplier_id = supplier.id_supplier
     inventory_id = inventory.id_inventory
+    empty_inventory_id = inventory_without_movements.id_inventory
     await db_session.commit()
     headers = {"Authorization": f"Bearer {create_access_token({'sub': str(user_id)})}"}
 
@@ -257,7 +317,64 @@ async def test_stock_never_becomes_negative(
         f"/api/v1/movements?id_inventory={inventory_id}", headers=headers
     )
     assert movements.status_code == 200
-    assert [item["type_movement"] for item in movements.json()] == ["Sell", "Buy"]
+    assert [item["type_movement"] for item in movements.json()["items"]] == [
+        "Sell",
+        "Buy",
+    ]
+    assert movements.json()["total"] == 2
+    assert exact_sale.json()["unit_cost"] == "100.000000"
+    assert exact_sale.json()["date"].endswith("Z")
+
+    later_purchase = await async_client.post(
+        "/api/v1/movements/purchase",
+        json={
+            "id_supplier": str(supplier_id),
+            "id_inventory": str(inventory_id),
+            "quantity": 1,
+            "value": "200.00",
+        },
+        headers=headers,
+    )
+    assert later_purchase.status_code == 201
+
+    sales_report = await async_client.get("/api/v1/reports/sales", headers=headers)
+    assert sales_report.status_code == 200
+    report = sales_report.json()
+    assert report["items"][0]["last_purchase_price"] == "100.000000"
+    assert report["items"][0]["profit"] == "75.000000"
+    assert report["total_profit"] == "75.000000"
+
+    sale_date = exact_sale.json()["date"]
+    inclusive_start = await async_client.get(
+        "/api/v1/reports/sales",
+        params={"date_from": sale_date},
+        headers=headers,
+    )
+    assert inclusive_start.status_code == 200
+    assert inclusive_start.json()["total"] == 1
+    exclusive_end = await async_client.get(
+        "/api/v1/reports/sales",
+        params={"date_to": sale_date},
+        headers=headers,
+    )
+    assert exclusive_end.status_code == 200
+    assert exclusive_end.json()["total"] == 0
+
+    inventory_report = await async_client.get(
+        "/api/v1/reports/inventory", headers=headers
+    )
+    assert inventory_report.status_code == 200
+    empty_item = next(
+        item
+        for item in inventory_report.json()
+        if item["id_inventory"] == str(empty_inventory_id)
+    )
+    assert empty_item["current_stock"] == 0
+
+    naive_date = await async_client.get(
+        "/api/v1/reports/sales?date_from=2026-01-01T00:00:00", headers=headers
+    )
+    assert naive_date.status_code == 422
 
 
 @pytest.mark.asyncio
@@ -404,6 +521,13 @@ async def test_inventory_integrity_rules(
     assert normalized.status_code == 200
     assert normalized.json()["code_inventory"] is None
     assert normalized.json()["barcode_inventory"] is None
+
+    paginated_inventory = await async_client.get(
+        "/api/v1/inventory?page=1&page_size=1", headers=headers
+    )
+    assert paginated_inventory.status_code == 200
+    assert paginated_inventory.json()["total"] == 2
+    assert len(paginated_inventory.json()["items"]) == 1
 
 
 # Aquí se agregarían más tests de integración:

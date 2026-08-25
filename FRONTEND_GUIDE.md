@@ -70,6 +70,7 @@ Endpoint: `/inventory/`
 *   `code_inventory` y `barcode_inventory` son únicos, admiten máximo 100 caracteres y convierten cadenas vacías en `null`. Un duplicado devuelve `409 Conflict`.
 *   Las relaciones de catálogo se validan al crear y actualizar. Un UUID inexistente devuelve `404 Not Found`.
 *   Las fotos deben usar URL `http`/`https`, con máximo 2048 caracteres. Cada artículo admite máximo 10 fotos. Una foto solo puede borrarse desde su propio artículo.
+*   Los listados de inventario, movimientos y usuarios son paginados mediante `page` (desde 1) y `page_size` (1 a 100). La respuesta usa `{ items, total, page, page_size, pages }`.
 *   El backend *no* calcula el precio final de venta como campo físico en la tabla de inventario, sino que la "utilidad" o los promedios se calculan dinámicamente según las compras de inventario (ver sección de Movimientos).
 
 ### C. Movimientos (Compras y Ventas)
@@ -78,7 +79,16 @@ Este es el módulo que afecta el **Stock y los Costos**.
 *   Existen dos tipos de movimiento (`type_movement`): `BUY` (Compra a proveedor) y `SELL` (Venta a cliente).
 *   **`BUY` (Compra)**: Incrementa la cantidad de stock del producto (`id_inventory`). Requiere el `id_supplier`, la `quantity` (cantidad entrante) y el `value` (costo unitario de la compra).
 *   **`SELL` (Venta)**: Disminuye la cantidad de stock. En este caso el `id_supplier` puede ir nulo. Debe enviarse la cantidad a restar y el valor final de venta.
+*   Cada movimiento devuelve `unit_cost`. En ventas representa el coste histórico inmutable usado para calcular ganancia; compras posteriores no lo modifican.
 *   *Nota*: El backend valida que no haya "stock negativo". Si intentas hacer un `SELL` por una cantidad mayor al stock actual, la API devolverá `422 Unprocessable Entity` con `{"detail":"Stock insuficiente: disponible X, solicitado Y"}`.
+
+### Fechas y reportes
+
+*   Todas las fechas de movimientos se devuelven en UTC.
+*   `date_from` es inclusivo y `date_to` exclusivo: `[date_from, date_to)`.
+*   Los filtros deben incluir zona horaria (`Z` o un offset como `-05:00`); fechas sin zona devuelven `422`.
+*   `/reports/sales` también acepta `page` y `page_size`; sus totales corresponden a todo el filtro, no solo a la página.
+*   `/reports/inventory` incluye artículos sin movimientos con cantidades en cero.
 
 ### D. Usuarios y Roles
 Endpoints: `/users/` y `/roles/`

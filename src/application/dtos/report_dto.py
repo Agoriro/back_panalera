@@ -22,6 +22,10 @@ class SalesReportResponse(BaseModel):
     items: list[SaleReportItem]
     total_revenue: Decimal
     total_profit: Decimal
+    total: int
+    page: int
+    page_size: int
+    pages: int
 
 
 class InventoryReportItem(BaseModel):

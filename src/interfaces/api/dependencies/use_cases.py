@@ -126,4 +126,4 @@ def get_movement_use_case(
 def get_report_use_case(
     session: AsyncSession = Depends(get_db_session),
 ) -> ReportUseCase:
-    return ReportUseCase(MovementRepository(session), InventoryRepository(session))
+    return ReportUseCase(MovementRepository(session))

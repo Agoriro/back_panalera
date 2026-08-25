@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     text,
@@ -25,6 +26,9 @@ class MovementModel(Base):
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_movements_quantity_positive"),
         CheckConstraint("value > 0", name="ck_movements_value_positive"),
+        CheckConstraint("unit_cost >= 0", name="ck_movements_unit_cost_nonnegative"),
+        Index("ix_movements_inventory_date", "id_inventory", "date"),
+        Index("ix_movements_type_date", "type_movement", "date"),
     )
 
     id_movement = Column(
@@ -40,6 +44,7 @@ class MovementModel(Base):
     )
     quantity = Column(Integer, nullable=False)
     value = Column(Numeric(18, 6), nullable=False)
+    unit_cost = Column(Numeric(18, 6), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
     updated_at = Column(DateTime(timezone=True), onupdate=text("now()"))
 

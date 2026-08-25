@@ -1,6 +1,7 @@
 # Paso 15: src/application/use_cases/user_use_case.py
 from uuid import UUID
 
+from src.application.dtos.pagination_dto import Page, build_page
 from src.application.dtos.user_dto import UserCreate, UserResponse, UserUpdate
 from src.domain.entities.user import User
 from src.domain.repositories.role_repository import RoleRepository
@@ -43,9 +44,12 @@ class UserUseCase:
         logger.info("Usuario creado exitosamente", id=str(created_user.id_user))
         return UserResponse.model_validate(created_user)
 
-    async def get_all(self) -> list[UserResponse]:
-        users = await self.user_repo.get_all()
-        return [UserResponse.model_validate(u) for u in users]
+    async def get_all(self, page: int = 1, page_size: int = 50) -> Page[UserResponse]:
+        users, total = await self.user_repo.get_all(
+            offset=(page - 1) * page_size, limit=page_size
+        )
+        items = [UserResponse.model_validate(u) for u in users]
+        return build_page(items, total, page, page_size)
 
     async def get_by_id(self, id_user: UUID) -> UserResponse:
         user = await self.user_repo.get_by_id(id_user)

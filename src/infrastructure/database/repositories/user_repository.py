@@ -5,7 +5,7 @@ Implementación del repositorio de User.
 
 from uuid import UUID
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -77,11 +77,18 @@ class UserRepository(BaseRepository[UserModel], IUserRepository):
         model = result.scalars().first()
         return self._to_entity(model) if model else None
 
-    async def get_all(self) -> list[User]:
-        query = select(UserModel).options(joinedload(UserModel.role))
+    async def get_all(self, offset: int = 0, limit: int = 50) -> tuple[list[User], int]:
+        total = await self.session.scalar(select(func.count()).select_from(UserModel))
+        query = (
+            select(UserModel)
+            .options(joinedload(UserModel.role))
+            .order_by(UserModel.id_user)
+            .offset(offset)
+            .limit(limit)
+        )
         result = await self.session.execute(query)
         models = result.scalars().all()
-        return [self._to_entity(m) for m in models]
+        return [self._to_entity(m) for m in models], int(total or 0)
 
     async def update(self, user: User) -> User:
         model = self._to_model(user)

@@ -34,7 +34,9 @@ class InventoryRepository(ABC):
         code_inventory: str | None = None,
         barcode_inventory: str | None = None,
         search: str | None = None,
-    ) -> list[Inventory]:
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[Inventory], int]:
         pass
 
     @abstractmethod

@@ -24,5 +24,6 @@ class Movement:
     id_inventory: UUID
     quantity: int
     value: Decimal
+    unit_cost: Decimal
     created_at: datetime | None = None
     updated_at: datetime | None = None

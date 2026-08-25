@@ -1,8 +1,9 @@
 # Paso 16: src/interfaces/api/v1/routers/users.py
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
+from src.application.dtos.pagination_dto import Page
 from src.application.dtos.user_dto import UserCreate, UserResponse, UserUpdate
 from src.application.use_cases.user_use_case import UserUseCase
 from src.interfaces.api.dependencies.auth import Permission, has_permission
@@ -27,10 +28,14 @@ async def create_user(
     return await use_case.create(data)
 
 
-@router.get("", response_model=list[UserResponse])
-async def get_users(use_case: UserUseCase = Depends(get_user_use_case)):
+@router.get("", response_model=Page[UserResponse])
+async def get_users(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    use_case: UserUseCase = Depends(get_user_use_case),
+):
     """Lista todos los usuarios."""
-    return await use_case.get_all()
+    return await use_case.get_all(page, page_size)
 
 
 @router.get("/{id}", response_model=UserResponse)

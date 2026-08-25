@@ -1,12 +1,14 @@
 # Paso 15: src/application/use_cases/movement_use_case.py
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
+from src.application.date_ranges import normalize_date_range
 from src.application.dtos.movement_dto import (
     MovementResponse,
     PurchaseCreate,
     SaleCreate,
 )
+from src.application.dtos.pagination_dto import Page, build_page
 from src.domain.entities.movement import Movement, MovementType
 from src.domain.repositories.catalog_repository import SupplierRepository
 from src.domain.repositories.inventory_repository import InventoryRepository
@@ -49,11 +51,12 @@ class MovementUseCase:
         movement = Movement(
             id_movement=None,  # type: ignore
             type_movement=MovementType.BUY,
-            date=datetime.now(),
+            date=datetime.now(UTC),
             id_supplier=data.id_supplier,
             id_inventory=data.id_inventory,
             quantity=data.quantity,
             value=data.value,
+            unit_cost=data.value,
         )
 
         created_mov = await self.movement_repo.create(movement)
@@ -91,11 +94,12 @@ class MovementUseCase:
         movement = Movement(
             id_movement=None,  # type: ignore
             type_movement=MovementType.SELL,
-            date=datetime.now(),
+            date=datetime.now(UTC),
             id_supplier=None,
             id_inventory=data.id_inventory,
             quantity=data.quantity,
             value=sell_value,
+            unit_cost=last_purchase.value,
         )
 
         created_mov = await self.movement_repo.create(movement)
@@ -107,8 +111,17 @@ class MovementUseCase:
         date_from: datetime | None = None,
         date_to: datetime | None = None,
         id_inventory: UUID | None = None,
-    ) -> list[MovementResponse]:
-        movements = await self.movement_repo.get_all(
-            type_movement, date_from, date_to, id_inventory
+        page: int = 1,
+        page_size: int = 50,
+    ) -> Page[MovementResponse]:
+        date_from, date_to = normalize_date_range(date_from, date_to)
+        movements, total = await self.movement_repo.get_all(
+            type_movement,
+            date_from,
+            date_to,
+            id_inventory,
+            offset=(page - 1) * page_size,
+            limit=page_size,
         )
-        return [MovementResponse.model_validate(m) for m in movements]
+        items = [MovementResponse.model_validate(m) for m in movements]
+        return build_page(items, total, page, page_size)

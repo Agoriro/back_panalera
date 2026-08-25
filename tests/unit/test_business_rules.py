@@ -45,6 +45,7 @@ async def test_calculate_sell_price():
         id_inventory=id_inv,
         quantity=10,
         value=Decimal("100.00"),
+        unit_cost=Decimal("100.00"),
     )
     movement_repo.get_stock.return_value = 10
 
@@ -56,6 +57,7 @@ async def test_calculate_sell_price():
         id_inventory=id_inv,
         quantity=2,
         value=Decimal("135.00"),
+        unit_cost=Decimal("100.00"),
     )
 
     sale_data = SaleCreate(id_inventory=id_inv, quantity=2)
@@ -124,6 +126,7 @@ async def test_sale_with_insufficient_stock_fails_before_insert():
         id_inventory=id_inv,
         quantity=3,
         value=Decimal("100.00"),
+        unit_cost=Decimal("100.00"),
     )
     movement_repo.get_stock.return_value = 3
     use_case = MovementUseCase(movement_repo, inv_repo, supplier_repo)
@@ -138,40 +141,10 @@ async def test_sale_with_insufficient_stock_fails_before_insert():
 @pytest.mark.asyncio
 async def test_calculate_inventory_report():
     movement_repo = AsyncMock()
-    inv_repo = AsyncMock()
-
-    use_case = ReportUseCase(movement_repo, inv_repo)
+    use_case = ReportUseCase(movement_repo)
     id_inv = uuid4()
 
-    movement_repo.get_all.return_value = [
-        Movement(
-            id_movement=uuid4(),
-            type_movement=MovementType.BUY,
-            date=None,
-            id_supplier=None,
-            id_inventory=id_inv,
-            quantity=10,
-            value=Decimal("10"),
-        ),
-        Movement(
-            id_movement=uuid4(),
-            type_movement=MovementType.SELL,
-            date=None,
-            id_supplier=None,
-            id_inventory=id_inv,
-            quantity=3,
-            value=Decimal("15"),
-        ),
-        Movement(
-            id_movement=uuid4(),
-            type_movement=MovementType.SELL,
-            date=None,
-            id_supplier=None,
-            id_inventory=id_inv,
-            quantity=2,
-            value=Decimal("15"),
-        ),
-    ]
+    movement_repo.get_inventory_report.return_value = [(id_inv, 10, 5, 5)]
 
     report = await use_case.get_inventory_report()
 
