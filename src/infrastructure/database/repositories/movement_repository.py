@@ -6,7 +6,7 @@ Implementación del repositorio de Movement.
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import desc, select
+from sqlalchemy import case, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.movement import Movement, MovementType
@@ -87,3 +87,14 @@ class MovementRepository(BaseRepository[MovementModel], IMovementRepository):
         result = await self.session.execute(query)
         model = result.scalars().first()
         return self._to_entity(model) if model else None
+
+    async def get_stock(self, id_inventory: UUID) -> int:
+        signed_quantity = case(
+            (MovementModel.type_movement == MovementType.BUY, MovementModel.quantity),
+            else_=-MovementModel.quantity,
+        )
+        query = select(func.coalesce(func.sum(signed_quantity), 0)).where(
+            MovementModel.id_inventory == id_inventory
+        )
+        result = await self.session.execute(query)
+        return int(result.scalar_one())

@@ -88,6 +88,17 @@ class InventoryRepository(BaseRepository[InventoryModel], IInventoryRepository):
         model = result.scalars().first()
         return self._to_entity(model) if model else None
 
+    async def get_by_id_for_update(self, id_inventory: UUID) -> Inventory | None:
+        query = (
+            select(InventoryModel)
+            .options(selectinload(InventoryModel.photos))
+            .where(InventoryModel.id_inventory == id_inventory)
+            .with_for_update()
+        )
+        result = await self.session.execute(query)
+        model = result.scalars().first()
+        return self._to_entity(model) if model else None
+
     async def get_all(
         self,
         category_id: UUID | None = None,
@@ -131,7 +142,7 @@ class InventoryRepository(BaseRepository[InventoryModel], IInventoryRepository):
     async def update(self, inventory: Inventory) -> Inventory:
         model = self._to_model(inventory)
         merged_model = await self.session.merge(model)
-        await self.session.commit()
+        await self.session.flush()
         # Obtenemos de nuevo para cargar relaciones
         return await self.get_by_id(merged_model.id_inventory)
 
@@ -162,7 +173,7 @@ class InventoryPhotoRepository(
         model = await super().get_by_id(id_reg)
         if model:
             await self.session.delete(model)
-            await self.session.commit()
+            await self.session.flush()
             return True
         return False
 

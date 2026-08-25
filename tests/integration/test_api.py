@@ -1,10 +1,19 @@
 # Paso 19: tests/integration/test_api.py
+from decimal import Decimal
 from uuid import UUID, uuid4
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.infrastructure.database.models.catalog import (
+    CategoryModel,
+    ColorModel,
+    GenderModel,
+    SizeModel,
+    SupplierModel,
+)
+from src.infrastructure.database.models.inventory import InventoryModel
 from src.infrastructure.database.models.role import RoleModel
 from src.infrastructure.database.models.user import UserModel
 from src.infrastructure.security.jwt import create_access_token, create_refresh_token
@@ -168,6 +177,83 @@ async def test_endpoint_role_matrix(
         "/api/v1/movements", headers=headers_for(reader_id)
     )
     assert reader_read.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_stock_never_becomes_negative(
+    async_client: AsyncClient, db_session: AsyncSession
+):
+    role = RoleModel(id_role=uuid4(), name="Operator")
+    user = UserModel(
+        id_user=uuid4(),
+        user="stock-operator",
+        password="unused",
+        id_role=role.id_role,
+        is_active=True,
+    )
+    supplier = SupplierModel(
+        id_supplier=uuid4(), name_supplier="Proveedor", is_active=True
+    )
+    color = ColorModel(id_color=uuid4(), name_color="Azul")
+    size = SizeModel(id_size=uuid4(), name_size="M")
+    category = CategoryModel(id_category=uuid4(), name_category="Pañales")
+    gender = GenderModel(id_gender=uuid4(), name_gender="Unisex")
+    inventory = InventoryModel(
+        id_inventory=uuid4(),
+        description_inventory="Producto",
+        utility=Decimal("0.25"),
+        id_supplier=supplier.id_supplier,
+        id_color=color.id_color,
+        id_size=size.id_size,
+        id_category=category.id_category,
+        id_gender=gender.id_gender,
+        is_active=True,
+    )
+    db_session.add_all([role, user, supplier, color, size, category, gender, inventory])
+    user_id = user.id_user
+    supplier_id = supplier.id_supplier
+    inventory_id = inventory.id_inventory
+    await db_session.commit()
+    headers = {"Authorization": f"Bearer {create_access_token({'sub': str(user_id)})}"}
+
+    purchase = await async_client.post(
+        "/api/v1/movements/purchase",
+        json={
+            "id_supplier": str(supplier_id),
+            "id_inventory": str(inventory_id),
+            "quantity": 3,
+            "value": "100.00",
+        },
+        headers=headers,
+    )
+    assert purchase.status_code == 201
+
+    excessive_sale = await async_client.post(
+        "/api/v1/movements/sale",
+        json={"id_inventory": str(inventory_id), "quantity": 4},
+        headers=headers,
+    )
+    assert excessive_sale.status_code == 422
+
+    exact_sale = await async_client.post(
+        "/api/v1/movements/sale",
+        json={"id_inventory": str(inventory_id), "quantity": 3},
+        headers=headers,
+    )
+    assert exact_sale.status_code == 201
+
+    extra_sale = await async_client.post(
+        "/api/v1/movements/sale",
+        json={"id_inventory": str(inventory_id), "quantity": 1},
+        headers=headers,
+    )
+    assert extra_sale.status_code == 422
+
+    movements = await async_client.get(
+        f"/api/v1/movements?id_inventory={inventory_id}", headers=headers
+    )
+    assert movements.status_code == 200
+    assert [item["type_movement"] for item in movements.json()] == ["Sell", "Buy"]
 
 
 # Aquí se agregarían más tests de integración:

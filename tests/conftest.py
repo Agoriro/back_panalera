@@ -9,6 +9,7 @@ os.environ.setdefault("ENVIRONMENT", "test")
 
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
+from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -28,6 +29,7 @@ engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=False)
 @event.listens_for(engine.sync_engine, "connect")
 def register_sqlite_functions(dbapi_connection, _connection_record) -> None:
     dbapi_connection.create_function("now", 0, lambda: datetime.now(UTC).isoformat())
+    dbapi_connection.create_function("gen_random_uuid", 0, lambda: uuid4().hex)
 
 
 TestingSessionLocal = async_sessionmaker(
@@ -37,7 +39,12 @@ TestingSessionLocal = async_sessionmaker(
 
 async def override_get_db_session() -> AsyncGenerator[AsyncSession, None]:
     async with TestingSessionLocal() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
 app.dependency_overrides[get_db_session] = override_get_db_session

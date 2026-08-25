@@ -32,12 +32,12 @@ class BaseRepository(Generic[ModelType]):
 
     async def create(self, obj_in: ModelType) -> ModelType:
         self.session.add(obj_in)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(obj_in)
         return obj_in
 
     async def update(self, obj_in: ModelType) -> ModelType:
         self.session.add(obj_in)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(obj_in)
         return obj_in

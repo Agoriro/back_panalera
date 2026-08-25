@@ -75,7 +75,7 @@ Este es el módulo que afecta el **Stock y los Costos**.
 *   Existen dos tipos de movimiento (`type_movement`): `BUY` (Compra a proveedor) y `SELL` (Venta a cliente).
 *   **`BUY` (Compra)**: Incrementa la cantidad de stock del producto (`id_inventory`). Requiere el `id_supplier`, la `quantity` (cantidad entrante) y el `value` (costo unitario de la compra).
 *   **`SELL` (Venta)**: Disminuye la cantidad de stock. En este caso el `id_supplier` puede ir nulo. Debe enviarse la cantidad a restar y el valor final de venta.
-*   *Nota*: El backend valida que no haya "stock negativo". Si intentas hacer un `SELL` por una cantidad mayor al stock actual, la API devolverá un error HTTP `400 Bad Request`.
+*   *Nota*: El backend valida que no haya "stock negativo". Si intentas hacer un `SELL` por una cantidad mayor al stock actual, la API devolverá `422 Unprocessable Entity` con `{"detail":"Stock insuficiente: disponible X, solicitado Y"}`.
 
 ### D. Usuarios y Roles
 Endpoints: `/users/` y `/roles/`
@@ -87,11 +87,11 @@ Gestión interna de permisos. Los contraseñas *nunca* se devuelven en los endpo
 
 El backend utiliza códigos HTTP estándar:
 *   `200 OK` / `201 Created`: Operación exitosa.
-*   `400 Bad Request`: Error de lógica de negocio (Ej: Stock insuficiente, regla de negocio violada).
+*   `400 Bad Request`: Petición inválida no cubierta por validación de esquema o reglas de negocio.
 *   `401 Unauthorized`: Token inválido o ausente.
 *   `403 Forbidden`: El usuario no tiene permisos suficientes para la acción.
 *   `404 Not Found`: El recurso solicitado (UUID) no existe.
-*   `422 Unprocessable Entity`: Error de validación de formulario/JSON (falta un campo, tipo de dato incorrecto). Muy común si no respetas el Schema exacto.
+*   `422 Unprocessable Entity`: Error de validación de formulario/JSON o regla de negocio (por ejemplo, stock insuficiente).
 *   `429 Too Many Requests`: Por seguridad, hay límite de peticiones (Rate Limiting). Especialmente en el `/auth/login`.
 
 El body del error generalmente tiene el formato (dependiendo si es un error de Pydantic o de negocio):

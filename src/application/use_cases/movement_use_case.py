@@ -36,7 +36,7 @@ class MovementUseCase:
             "Registrando compra", id_inventory=str(data.id_inventory), qty=data.quantity
         )
 
-        inventory = await self.inv_repo.get_by_id(data.id_inventory)
+        inventory = await self.inv_repo.get_by_id_for_update(data.id_inventory)
         if not inventory or not inventory.is_active:
             raise ResourceNotFoundException(
                 "Artículo de inventario no encontrado o inactivo"
@@ -64,7 +64,7 @@ class MovementUseCase:
             "Registrando venta", id_inventory=str(data.id_inventory), qty=data.quantity
         )
 
-        inventory = await self.inv_repo.get_by_id(data.id_inventory)
+        inventory = await self.inv_repo.get_by_id_for_update(data.id_inventory)
         if not inventory or not inventory.is_active:
             raise ResourceNotFoundException(
                 "Artículo de inventario no encontrado o inactivo"
@@ -79,11 +79,14 @@ class MovementUseCase:
                 "No se puede vender un artículo que no tiene compras registradas"
             )
 
+        current_stock = await self.movement_repo.get_stock(data.id_inventory)
+        if data.quantity > current_stock:
+            raise BusinessRuleValidationException(
+                f"Stock insuficiente: disponible {current_stock}, solicitado {data.quantity}"
+            )
+
         # Utility viene como porcentaje (ej 0.35 para 35%)
         sell_value = last_purchase.value * (1 + inventory.utility)
-
-        # Opcional: Validar existencias antes de vender
-        # (se pide en el reporte, pero es buena práctica no dejar vender si qty > stock)
 
         movement = Movement(
             id_movement=None,  # type: ignore

@@ -31,3 +31,8 @@ class MovementRepository(ABC):
     ) -> Movement | None:
         """Obtiene la compra más reciente para un artículo específico, necesario para calcular el precio de venta."""
         pass
+
+    @abstractmethod
+    async def get_stock(self, id_inventory: UUID) -> int:
+        """Calcula compras menos ventas dentro de transacción actual."""
+        pass

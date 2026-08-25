@@ -19,6 +19,11 @@ class InventoryRepository(ABC):
         pass
 
     @abstractmethod
+    async def get_by_id_for_update(self, id_inventory: UUID) -> Inventory | None:
+        """Obtiene y bloquea artículo hasta finalizar transacción actual."""
+        pass
+
+    @abstractmethod
     async def get_all(
         self,
         category_id: UUID | None = None,

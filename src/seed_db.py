@@ -76,6 +76,8 @@ async def seed_database() -> None:
                 print("Usuario administrador actualizado desde configuración segura.")
             print("El usuario administrador configurado ya existe.")
 
+        await session.commit()
+
     print("Siembra finalizada.")
 
 

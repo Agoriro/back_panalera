@@ -79,7 +79,7 @@ class SQLAlchemyCatalogRepository(
     async def update(self, entity: T_Entity) -> T_Entity:
         model = self._to_model(entity)
         merged_model = await self.session.merge(model)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(merged_model)
         return self._to_entity(merged_model)
 

@@ -25,7 +25,7 @@ async def test_calculate_sell_price():
 
     id_inv = uuid4()
 
-    inv_repo.get_by_id.return_value = Inventory(
+    inv_repo.get_by_id_for_update.return_value = Inventory(
         id_inventory=id_inv,
         description_inventory="Test",
         utility=Decimal("0.35"),
@@ -46,6 +46,7 @@ async def test_calculate_sell_price():
         quantity=10,
         value=Decimal("100.00"),
     )
+    movement_repo.get_stock.return_value = 10
 
     movement_repo.create.return_value = Movement(
         id_movement=uuid4(),
@@ -78,7 +79,7 @@ async def test_calculate_sell_price_without_purchase_fails():
     use_case = MovementUseCase(movement_repo, inv_repo, supplier_repo)
     id_inv = uuid4()
 
-    inv_repo.get_by_id.return_value = Inventory(
+    inv_repo.get_by_id_for_update.return_value = Inventory(
         id_inventory=id_inv,
         description_inventory="Test",
         utility=Decimal("0.35"),
@@ -96,6 +97,42 @@ async def test_calculate_sell_price_without_purchase_fails():
 
     with pytest.raises(BusinessRuleValidationException):
         await use_case.register_sale(sale_data)
+
+
+@pytest.mark.asyncio
+async def test_sale_with_insufficient_stock_fails_before_insert():
+    movement_repo = AsyncMock()
+    inv_repo = AsyncMock()
+    supplier_repo = AsyncMock()
+    id_inv = uuid4()
+    inv_repo.get_by_id_for_update.return_value = Inventory(
+        id_inventory=id_inv,
+        description_inventory="Test",
+        utility=Decimal("0.35"),
+        id_supplier=uuid4(),
+        id_color=uuid4(),
+        id_size=uuid4(),
+        id_category=uuid4(),
+        id_gender=uuid4(),
+        is_active=True,
+    )
+    movement_repo.get_last_purchase_by_inventory.return_value = Movement(
+        id_movement=uuid4(),
+        type_movement=MovementType.BUY,
+        date=datetime.now(),
+        id_supplier=uuid4(),
+        id_inventory=id_inv,
+        quantity=3,
+        value=Decimal("100.00"),
+    )
+    movement_repo.get_stock.return_value = 3
+    use_case = MovementUseCase(movement_repo, inv_repo, supplier_repo)
+
+    with pytest.raises(BusinessRuleValidationException, match="disponible 3"):
+        await use_case.register_sale(SaleCreate(id_inventory=id_inv, quantity=4))
+
+    inv_repo.get_by_id_for_update.assert_awaited_once_with(id_inv)
+    movement_repo.create.assert_not_awaited()
 
 
 @pytest.mark.asyncio

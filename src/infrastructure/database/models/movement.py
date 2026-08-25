@@ -3,7 +3,16 @@
 Modelo SQLAlchemy para Movement.
 """
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, Numeric, text
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    Numeric,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -13,6 +22,10 @@ from src.infrastructure.database.models.base import Base
 
 class MovementModel(Base):
     __tablename__ = "movements"
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_movements_quantity_positive"),
+        CheckConstraint("value > 0", name="ck_movements_value_positive"),
+    )
 
     id_movement = Column(
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")

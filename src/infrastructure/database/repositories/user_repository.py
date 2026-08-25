@@ -87,7 +87,7 @@ class UserRepository(BaseRepository[UserModel], IUserRepository):
         model = self._to_model(user)
         # SQLAlchemy merge para actualizar preservando session
         merged_model = await self.session.merge(model)
-        await self.session.commit()
+        await self.session.flush()
         # Recargar con el rol cargado
         query = (
             select(UserModel)
@@ -110,7 +110,6 @@ class UserRepository(BaseRepository[UserModel], IUserRepository):
         )
         result = await self.session.execute(statement)
         if result.rowcount != 1:
-            await self.session.rollback()
             return None
-        await self.session.commit()
+        await self.session.flush()
         return await self.get_by_id(id_user)
