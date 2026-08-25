@@ -4,7 +4,7 @@ Módulo de configuración de la aplicación usando Pydantic Settings.
 Carga variables de entorno y proporciona valores predeterminados.
 """
 
-from pydantic import field_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # Bootstrap opcional. Nunca hay credenciales predeterminadas.
+    BOOTSTRAP_ADMIN_USERNAME: str | None = None
+    BOOTSTRAP_ADMIN_PASSWORD: SecretStr | None = None
 
     # CORS (separados por coma si son múltiples)
     ALLOWED_ORIGINS: str = (

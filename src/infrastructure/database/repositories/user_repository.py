@@ -5,7 +5,7 @@ Implementación del repositorio de User.
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -26,6 +26,7 @@ class UserRepository(BaseRepository[UserModel], IUserRepository):
             password=model.password,
             id_role=model.id_role,
             is_active=model.is_active,
+            token_version=model.token_version,
             role_name=model.role.name if getattr(model, "role", None) else None,
             created_at=model.created_at,
             updated_at=model.updated_at,
@@ -38,6 +39,7 @@ class UserRepository(BaseRepository[UserModel], IUserRepository):
             password=entity.password,
             id_role=entity.id_role,
             is_active=entity.is_active,
+            token_version=entity.token_version,
         )
 
     async def create(self, user: User) -> User:
@@ -95,3 +97,20 @@ class UserRepository(BaseRepository[UserModel], IUserRepository):
         result = await self.session.execute(query)
         merged_model = result.scalars().first()
         return self._to_entity(merged_model)  # type: ignore
+
+    async def rotate_token_version(
+        self, id_user: UUID, expected_version: int
+    ) -> User | None:
+        statement = (
+            update(UserModel)
+            .where(UserModel.id_user == id_user)
+            .where(UserModel.token_version == expected_version)
+            .where(UserModel.is_active.is_(True))
+            .values(token_version=UserModel.token_version + 1)
+        )
+        result = await self.session.execute(statement)
+        if result.rowcount != 1:
+            await self.session.rollback()
+            return None
+        await self.session.commit()
+        return await self.get_by_id(id_user)

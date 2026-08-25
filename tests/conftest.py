@@ -8,9 +8,11 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production")
 os.environ.setdefault("ENVIRONMENT", "test")
 
 from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.infrastructure.database.models.base import Base
@@ -21,6 +23,13 @@ from src.main import app
 SQLALCHEMY_DATABASE_URL = os.environ["DATABASE_URL"]
 
 engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=False)
+
+
+@event.listens_for(engine.sync_engine, "connect")
+def register_sqlite_functions(dbapi_connection, _connection_record) -> None:
+    dbapi_connection.create_function("now", 0, lambda: datetime.now(UTC).isoformat())
+
+
 TestingSessionLocal = async_sessionmaker(
     autocommit=False, autoflush=False, bind=engine, class_=AsyncSession
 )
@@ -49,3 +58,9 @@ async def async_client() -> AsyncGenerator[AsyncClient, None]:
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         yield client
+
+
+@pytest.fixture
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
+    async with TestingSessionLocal() as session:
+        yield session

@@ -35,7 +35,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"username\": \"admin\",\n    \"password\": \"admin123\"\n}"
+                            "raw": "{\n    \"username\": \"{{admin_username}}\",\n    \"password\": \"{{admin_password}}\"\n}"
                         },
                         "url": {
                             "raw": "{{base_url}}/api/v1/auth/login",
@@ -127,6 +127,14 @@
         },
         {
             "key": "access_token",
+            "value": ""
+        },
+        {
+            "key": "admin_username",
+            "value": "admin"
+        },
+        {
+            "key": "admin_password",
             "value": ""
         }
     ]

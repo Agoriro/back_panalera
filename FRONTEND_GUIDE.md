@@ -24,7 +24,7 @@ El sistema utiliza autenticación basada en JWT (JSON Web Tokens). Existen dos t
     ```json
     {
       "username": "admin",
-      "password": "admin123"
+      "password": "<contraseña-configurada>"
     }
     ```
 2.  La API responderá con:
@@ -45,7 +45,7 @@ Authorization: Bearer <access_token>
 
 ### Flujo de Refresh (Expiración de Token)
 Si el Access Token expira, el backend responderá con un error HTTP `401 Unauthorized`.
-Tu interceptor en el Frontend (por ejemplo en Axios o Fetch) debe capturar este `401`, llamar al endpoint `/auth/refresh` enviando el `refresh_token`, y si es exitoso, reintentar la petición original con el nuevo `access_token`.
+Tu interceptor en el Frontend (por ejemplo en Axios o Fetch) debe capturar este `401`, llamar al endpoint `/auth/refresh` enviando el `refresh_token`, guardar **ambos tokens nuevos** de la respuesta y reintentar la petición original con el nuevo `access_token`. Cada refresh token es de un solo uso; reutilizar uno anterior devuelve `401`.
 
 ---
 

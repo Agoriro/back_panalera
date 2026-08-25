@@ -15,6 +15,7 @@ class User:
     password: str
     id_role: UUID
     is_active: bool
+    token_version: int = 0
     role_name: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None

@@ -3,7 +3,7 @@
 Modelo SQLAlchemy para User.
 """
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -20,6 +20,7 @@ class UserModel(Base):
     password = Column(String, nullable=False)
     id_role = Column(UUID(as_uuid=True), ForeignKey("roles.id_role"), nullable=False)
     is_active = Column(Boolean, default=True, server_default=text("true"))
+    token_version = Column(Integer, nullable=False, default=0, server_default=text("0"))
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
     updated_at = Column(DateTime(timezone=True), onupdate=text("now()"))
 

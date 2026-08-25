@@ -29,3 +29,10 @@ class UserRepository(ABC):
     @abstractmethod
     async def update(self, user: User) -> User:
         pass
+
+    @abstractmethod
+    async def rotate_token_version(
+        self, id_user: UUID, expected_version: int
+    ) -> User | None:
+        """Incrementa versión solo si coincide, invalidando refresh token usado."""
+        pass

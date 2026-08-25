@@ -100,6 +100,8 @@ Al usar **Supabase (PostgreSQL gratuito y permanente)** para la base de datos y 
 | :--- | :--- | :--- |
 | `DATABASE_URL` | *Pega la URI de Supabase* | URL de conexión de Supabase |
 | `SECRET_KEY` | *Genera un texto seguro de 32+ caracteres* | Firma para tokens JWT |
+| `BOOTSTRAP_ADMIN_USERNAME` | `admin` u otro nombre | Usuario administrador inicial |
+| `BOOTSTRAP_ADMIN_PASSWORD` | *Contraseña única de 12+ caracteres* | Contraseña inicial; nunca usar un valor conocido o compartido |
 | `ALGORITHM` | `HS256` | Algoritmo JWT |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Duración del token de acceso |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Duración del refresh token |
@@ -116,7 +118,7 @@ Al usar **Supabase (PostgreSQL gratuito y permanente)** para la base de datos y 
 Cuando Render inicia el servicio web:
 1. Se conecta a **Supabase** usando tu `DATABASE_URL`.
 2. Ejecuta automáticamente `alembic upgrade head` para crear todas las tablas en Supabase.
-3. Ejecuta `python seed_db.py` para crear el rol `Admin` y el usuario inicial `admin` / `admin123`.
+3. Ejecuta `python seed_db.py` para provisionar el administrador configurado mediante `BOOTSTRAP_ADMIN_USERNAME` y `BOOTSTRAP_ADMIN_PASSWORD`. No existen credenciales predeterminadas.
 4. Levanta FastAPI en Uvicorn.
 
 ---

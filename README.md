@@ -31,10 +31,16 @@ El sistema requiere variables de entorno para funcionar. Debes crear un archivo 
    REFRESH_TOKEN_EXPIRE_DAYS=7
    ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
 
+   # Solo para crear o sincronizar administrador al ejecutar seed_db.py
+   BOOTSTRAP_ADMIN_USERNAME=admin
+   BOOTSTRAP_ADMIN_PASSWORD=una_contraseña_unica_de_12_o_mas_caracteres
+
    # Entorno
    ENVIRONMENT=development
    LOG_LEVEL=INFO
    ```
+   Si ambas variables `BOOTSTRAP_ADMIN_*` se omiten, el seeding no crea ningún
+   usuario. Nunca existen credenciales administrativas predeterminadas.
    *(Nota: si corres la app localmente con Poetry pero la base de datos en Docker, la URL debe ser `...user:password@localhost:5432...`)*
 
 ## 🐳 Instalación y Ejecución Local con Docker
