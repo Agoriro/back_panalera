@@ -33,7 +33,7 @@ class UserUseCase:
 
         hashed_password = get_password_hash(data.password)
         user = User(
-            id_user=None,  # type: ignore
+            id_user=None,
             user=data.user,
             password=hashed_password,
             id_role=data.id_role,

@@ -1,11 +1,14 @@
 # Paso 18: src/main.py
+import asyncio
 import time
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy import text
 
+from src.interfaces.api.dependencies.database import engine
 from src.interfaces.api.v1.routers.auth import limiter
 from src.interfaces.api.v1.routers.auth import router as auth_router
 from src.interfaces.api.v1.routers.catalog import router as catalog_router
@@ -138,4 +141,27 @@ app.include_router(reports_router, prefix=api_v1_prefix)
 
 @app.get("/health", tags=["Health"])
 async def health_check():
+    """Compatibilidad: confirma que proceso HTTP está vivo."""
     return {"status": "ok"}
+
+
+@app.get("/health/live", tags=["Health"])
+async def liveness_check():
+    """Liveness no depende de servicios externos."""
+    return {"status": "ok"}
+
+
+@app.get("/health/ready", tags=["Health"])
+async def readiness_check():
+    """Readiness confirma conexión DB dentro de timeout acotado."""
+    try:
+        async with asyncio.timeout(settings.DB_HEALTH_TIMEOUT_SECONDS):
+            async with engine.connect() as connection:
+                await connection.execute(text("SELECT 1"))
+    except Exception as exc:
+        logger.error("database_health_check_failed", error=type(exc).__name__)
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"status": "unavailable", "database": "down"},
+        )
+    return {"status": "ok", "database": "up"}

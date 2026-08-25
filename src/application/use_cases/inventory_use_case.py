@@ -69,7 +69,7 @@ class InventoryUseCase:
         await self._validate_relations(data)
 
         inventory = Inventory(
-            id_inventory=None,  # type: ignore
+            id_inventory=None,
             description_inventory=data.description_inventory,
             code_inventory=data.code_inventory,
             barcode_inventory=data.barcode_inventory,
@@ -159,7 +159,7 @@ class InventoryUseCase:
         for url in data.url_photos:
             photo = InventoryPhoto(
                 id_reg=None, id_inventory=id_inventory, url_photo=str(url)
-            )  # type: ignore
+            )
             created_photo = await self.photo_repo.create(photo)
             photos.append(InventoryPhotoResponse.model_validate(created_photo))
         return photos

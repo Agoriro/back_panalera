@@ -39,7 +39,7 @@ async def seed_database() -> None:
 
         if not admin_role:
             print("Creando el rol 'Admin'...")
-            new_role = Role(id_role=None, name="Admin")  # type: ignore
+            new_role = Role(id_role=None, name="Admin")
             admin_role = await role_repo.create(new_role)
             print(f"Rol 'Admin' creado exitosamente con ID: {admin_role.id_role}")
         else:
@@ -52,7 +52,7 @@ async def seed_database() -> None:
             print(f"Creando el usuario administrador '{username}'...")
             hashed_pw = get_password_hash(password)
             new_user = User(
-                id_user=None,  # type: ignore
+                id_user=None,
                 user=username,
                 password=hashed_pw,
                 id_role=admin_role.id_role,

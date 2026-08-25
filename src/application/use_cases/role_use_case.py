@@ -23,7 +23,7 @@ class RoleUseCase:
         if existing:
             raise ResourceAlreadyExistsException(f"El rol {data.name} ya existe")
 
-        role = Role(id_role=None, name=data.name)  # type: ignore
+        role = Role(id_role=None, name=data.name)
         created_role = await self.role_repo.create(role)
         logger.info("Rol creado exitosamente", id=str(created_role.id_role))
         return RoleResponse.model_validate(created_role)

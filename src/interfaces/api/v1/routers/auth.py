@@ -1,14 +1,20 @@
 # Paso 16: src/interfaces/api/v1/routers/auth.py
 from fastapi import APIRouter, Depends, Request
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from src.application.dtos.auth_dto import LoginRequest, RefreshRequest, TokenResponse
 from src.application.use_cases.auth_use_case import AuthUseCase
 from src.interfaces.api.dependencies.use_cases import get_auth_use_case
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
-limiter = Limiter(key_func=get_remote_address)
+
+
+def get_rate_limit_key(request: Request) -> str:
+    """Usa IP ya validado por middleware proxy; nunca confía en header crudo."""
+    return request.client.host if request.client else "unknown"
+
+
+limiter = Limiter(key_func=get_rate_limit_key)
 
 
 @router.post("/login", response_model=TokenResponse)

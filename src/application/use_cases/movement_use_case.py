@@ -49,7 +49,7 @@ class MovementUseCase:
             raise ResourceNotFoundException("Proveedor no encontrado o inactivo")
 
         movement = Movement(
-            id_movement=None,  # type: ignore
+            id_movement=None,
             type_movement=MovementType.BUY,
             date=datetime.now(UTC),
             id_supplier=data.id_supplier,
@@ -92,7 +92,7 @@ class MovementUseCase:
         sell_value = last_purchase.value * (1 + inventory.utility)
 
         movement = Movement(
-            id_movement=None,  # type: ignore
+            id_movement=None,
             type_movement=MovementType.SELL,
             date=datetime.now(UTC),
             id_supplier=None,

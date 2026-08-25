@@ -30,6 +30,62 @@ async def test_health_check(async_client: AsyncClient):
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
+    live = await async_client.get("/health/live")
+    assert live.status_code == 200
+    assert live.json() == {"status": "ok"}
+
+    ready = await async_client.get("/health/ready")
+    assert ready.status_code == 200
+    assert ready.json() == {"status": "ok", "database": "up"}
+
+
+@pytest.mark.asyncio
+async def test_cors_only_allows_configured_origins(async_client: AsyncClient):
+    allowed = await async_client.options(
+        "/health",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert allowed.status_code == 200
+    assert allowed.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+    rejected = await async_client.options(
+        "/health",
+        headers={
+            "Origin": "https://evil.example",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert rejected.status_code == 400
+    assert "access-control-allow-origin" not in rejected.headers
+
+
+@pytest.mark.asyncio
+async def test_readiness_reports_database_failure(
+    async_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+):
+    from src import main
+
+    class FailingConnection:
+        async def __aenter__(self):
+            raise OSError("database unavailable")
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return False
+
+    class FailingEngine:
+        def connect(self):
+            return FailingConnection()
+
+    monkeypatch.setattr(main, "engine", FailingEngine())
+
+    response = await async_client.get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "unavailable", "database": "down"}
+
 
 @pytest.mark.asyncio
 async def test_login_failed_wrong_credentials(async_client: AsyncClient):

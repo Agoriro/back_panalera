@@ -1,8 +1,8 @@
 # 🚀 Guía de Despliegue: Backend en Render + Base de Datos en Supabase
 
-Esta arquitectura es la recomendada para evitar los límites del plan gratuito de Render (Render solo permite **1 sola base de datos gratuita por cuenta**, la cual además expira cada 30 días).
+Esta arquitectura usa un servicio web `starter` para disponer de pre-deploy seguro. El plan gratuito sirve para pruebas, pero no incluye pre-deploy y Render no lo recomienda para producción.
 
-Al usar **Supabase (PostgreSQL gratuito y permanente)** para la base de datos y **Render** para el backend (**FastAPI**), obtienes la mejor combinación 100% gratuita y sin conflictos.
+Supabase aloja PostgreSQL y Render ejecuta FastAPI. Confirma límites y retención del plan de base de datos elegido antes del despliegue.
 
 ---
 
@@ -87,13 +87,17 @@ Al usar **Supabase (PostgreSQL gratuito y permanente)** para la base de datos y 
    - **Branch**: `main`.
    - **Build Command**:
      ```bash
-     pip install poetry && poetry config virtualenvs.create false && poetry install --only main
+     pip install poetry==1.8.3 && poetry config virtualenvs.create false && poetry install --only main --sync
+     ```
+   - **Pre-Deploy Command**:
+     ```bash
+     alembic upgrade head && python -m src.seed_db
      ```
    - **Start Command**:
      ```bash
-     alembic upgrade head && python seed_db.py && uvicorn src.main:app --host 0.0.0.0 --port $PORT
+     uvicorn src.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips=*
      ```
-   - **Plan**: `Free`.
+   - **Plan**: `Starter` o superior; pre-deploy no está disponible en `Free`.
 4. Agrega las **Variables de Entorno** (**Environment Variables**):
 
 | Variable | Valor | Descripción |
@@ -105,9 +109,15 @@ Al usar **Supabase (PostgreSQL gratuito y permanente)** para la base de datos y 
 | `ALGORITHM` | `HS256` | Algoritmo JWT |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Duración del token de acceso |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Duración del refresh token |
-| `ALLOWED_ORIGINS` | `*` o la URL de tu frontend | CORS para el frontend |
+| `ALLOWED_ORIGINS` | `https://tu-frontend.example` | Lista CORS explícita, separada por comas; nunca `*` |
 | `ENVIRONMENT` | `production` | Modo de ejecución |
-| `PYTHON_VERSION` | `3.13.0` | Versión de Python |
+| `PYTHON_VERSION` | `3.13.7` | Versión de Python fijada |
+| `DB_POOL_SIZE` | `5` | Conexiones persistentes por proceso |
+| `DB_MAX_OVERFLOW` | `10` | Conexiones temporales máximas |
+| `DB_POOL_TIMEOUT_SECONDS` | `10` | Espera máxima por conexión |
+| `DB_POOL_RECYCLE_SECONDS` | `1800` | Reciclaje preventivo de conexiones |
+| `DB_COMMAND_TIMEOUT_SECONDS` | `30` | Timeout de comandos PostgreSQL |
+| `DB_HEALTH_TIMEOUT_SECONDS` | `3` | Timeout del readiness check |
 
 5. Haz clic en **Create Web Service**.
 
@@ -117,9 +127,8 @@ Al usar **Supabase (PostgreSQL gratuito y permanente)** para la base de datos y 
 
 Cuando Render inicia el servicio web:
 1. Se conecta a **Supabase** usando tu `DATABASE_URL`.
-2. Ejecuta automáticamente `alembic upgrade head` para crear todas las tablas en Supabase.
-3. Ejecuta `python seed_db.py` para provisionar el administrador configurado mediante `BOOTSTRAP_ADMIN_USERNAME` y `BOOTSTRAP_ADMIN_PASSWORD`. No existen credenciales predeterminadas.
-4. Levanta FastAPI en Uvicorn.
+2. En pre-deploy ejecuta `alembic upgrade head` y `python -m src.seed_db`.
+3. Levanta Uvicorn con soporte de proxy. Render es el límite de confianza que entrega el IP real; no uses `--forwarded-allow-ips=*` fuera de una plataforma con proxy controlado.
 
 ---
 
@@ -129,9 +138,15 @@ Una vez que el despliegue esté en verde (**Live**):
 
 1. **Health Check**:
    ```
-   https://<tu-servicio-render>.onrender.com/health
+   https://<tu-servicio-render>.onrender.com/health/live
    ```
    Retorna: `{"status": "ok"}`
+
+   Readiness con DB:
+   ```text
+   https://<tu-servicio-render>.onrender.com/health/ready
+   ```
+   Devuelve `503` cuando PostgreSQL no está disponible.
 
 2. **Swagger Docs**:
    ```
@@ -140,3 +155,25 @@ Una vez que el despliegue esté en verde (**Live**):
 
 3. **Ver tablas en Supabase**:
    Puedes ir al panel de Supabase > **Table Editor** y verás todas las tablas (`users`, `inventory`, `movements`, `roles`, etc.) y el usuario `admin` ya creados.
+
+---
+
+## Migración y rollback
+
+Antes de desplegar:
+
+1. Crea un backup o snapshot de PostgreSQL.
+2. Revisa la revisión activa con `poetry run alembic current`.
+3. Revisa destino con `poetry run alembic heads`.
+4. Aplica en staging: `poetry run alembic upgrade head`.
+5. Ejecuta pruebas de humo sobre `/health/ready`, login y consultas principales.
+
+Rollback de una revisión:
+
+```bash
+poetry run alembic downgrade -1
+```
+
+Después despliega el commit de aplicación compatible con esa revisión. Si una migración transformó o eliminó datos, restaura el backup; `downgrade` no garantiza recuperar datos perdidos. No ejecutes migraciones manuales concurrentes con el pre-deploy de Render.
+
+`src.seed_db` es implementación canónica. `seed_db.py` en raíz solo conserva compatibilidad y delega en ella; no contiene lógica duplicada.

@@ -132,7 +132,7 @@ class CatalogUseCase(Generic[T_Entity, T_CreateDTO, T_UpdateDTO, T_ResponseDTO])
             raise ResourceNotFoundException("Recurso no encontrado")
 
         if hasattr(entity, "is_active"):
-            entity.is_active = not entity.is_active  # type: ignore
+            entity.is_active = not entity.is_active
             updated_entity = await self.repo.update(entity)
             return self.response_dto_cls.model_validate(updated_entity)
         else:

@@ -24,6 +24,7 @@ from src.domain.repositories.catalog_repository import SizeRepository as ISizeRe
 from src.domain.repositories.catalog_repository import (
     SupplierRepository as ISupplierRepository,
 )
+from src.infrastructure.database.models.base import Base
 from src.infrastructure.database.models.catalog import (
     CategoryModel,
     ColorModel,
@@ -34,7 +35,7 @@ from src.infrastructure.database.models.catalog import (
 from src.infrastructure.database.repositories.base_repository import BaseRepository
 
 T_Entity = TypeVar("T_Entity")
-T_Model = TypeVar("T_Model")
+T_Model = TypeVar("T_Model", bound=Base)
 
 
 class SQLAlchemyCatalogRepository(
@@ -97,31 +98,31 @@ class SQLAlchemyCatalogRepository(
 
 
 class SupplierRepository(
-    SQLAlchemyCatalogRepository[Supplier, SupplierModel], ISupplierRepository
+    SQLAlchemyCatalogRepository[SupplierModel, Supplier], ISupplierRepository
 ):
     def __init__(self, session: AsyncSession):
         super().__init__(SupplierModel, Supplier, session)
 
 
-class ColorRepository(SQLAlchemyCatalogRepository[Color, ColorModel], IColorRepository):
+class ColorRepository(SQLAlchemyCatalogRepository[ColorModel, Color], IColorRepository):
     def __init__(self, session: AsyncSession):
         super().__init__(ColorModel, Color, session)
 
 
-class SizeRepository(SQLAlchemyCatalogRepository[Size, SizeModel], ISizeRepository):
+class SizeRepository(SQLAlchemyCatalogRepository[SizeModel, Size], ISizeRepository):
     def __init__(self, session: AsyncSession):
         super().__init__(SizeModel, Size, session)
 
 
 class CategoryRepository(
-    SQLAlchemyCatalogRepository[Category, CategoryModel], ICategoryRepository
+    SQLAlchemyCatalogRepository[CategoryModel, Category], ICategoryRepository
 ):
     def __init__(self, session: AsyncSession):
         super().__init__(CategoryModel, Category, session)
 
 
 class GenderRepository(
-    SQLAlchemyCatalogRepository[Gender, GenderModel], IGenderRepository
+    SQLAlchemyCatalogRepository[GenderModel, Gender], IGenderRepository
 ):
     def __init__(self, session: AsyncSession):
         super().__init__(GenderModel, Gender, session)

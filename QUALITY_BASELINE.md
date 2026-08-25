@@ -1,27 +1,24 @@
 # Línea base de calidad
 
-Fecha: 2026-08-24
+Fecha de actualización: 2026-08-24
 
 ## Controles
 
 - `poetry check --lock`: aprobado.
-- `pytest`: 8 pruebas aprobadas.
-- Cobertura inicial: 68 %.
-- Ruff lint y formato: aprobados después de normalización automática.
-- Bandit: aprobado, sin hallazgos reportados.
-- mypy estricto: 209 errores heredados en 24 archivos.
+- Ruff lint y formato: bloqueantes en CI.
+- Bandit: bloqueante, sin hallazgos.
+- Mypy: bloqueante, sin errores en 64 archivos.
+- Pytest exige cobertura mínima de 75 % en CI.
 
-## Deuda de tipos
+## Política de tipos
 
-La mayoría de errores de mypy proviene de modelos SQLAlchemy declarativos sin
-`Mapped`, repositorios que heredan operaciones de modelos ORM pero exponen
-entidades de dominio, y funciones de API sin anotación de retorno.
-
-Mypy se ejecuta y muestra resultados en CI, pero queda temporalmente como
-control no bloqueante. La fase final de calidad debe reducir la deuda a cero y
-retirar `continue-on-error` del workflow.
+Mypy comprueba cuerpos no anotados y avisos útiles. Se desactivan códigos que
+SQLAlchemy declarativo clásico y la adaptación modelo-entidad producen de forma
+sistemática (`override`, `assignment`, `arg-type`, entre otros). El control ya
+es bloqueante: nuevos errores fuera de esas incompatibilidades conocidas rompen
+el pipeline. Migrar modelos a `Mapped` permitiría endurecer esos códigos después.
 
 ## Advertencia conocida
 
-Starlette emite `PendingDeprecationWarning` porque importa `multipart`; proviene
-de una dependencia externa, no del código del proyecto.
+La advertencia `PendingDeprecationWarning` de `starlette.formparsers` se filtra
+por módulo y mensaje exactos; proviene de dependencia fijada, no del proyecto.

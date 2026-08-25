@@ -30,6 +30,12 @@ El sistema requiere variables de entorno para funcionar. Debes crear un archivo 
    ACCESS_TOKEN_EXPIRE_MINUTES=15
    REFRESH_TOKEN_EXPIRE_DAYS=7
    ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8000
+   DB_POOL_SIZE=5
+   DB_MAX_OVERFLOW=10
+   DB_POOL_TIMEOUT_SECONDS=10
+   DB_POOL_RECYCLE_SECONDS=1800
+   DB_COMMAND_TIMEOUT_SECONDS=30
+   DB_HEALTH_TIMEOUT_SECONDS=3
 
    # Solo para crear o sincronizar administrador al ejecutar seed_db.py
    BOOTSTRAP_ADMIN_USERNAME=admin
@@ -97,7 +103,7 @@ poetry run ruff check .
 poetry run ruff format --check .
 poetry run mypy src
 poetry run bandit -q -r src seed_db.py
-poetry run pytest --cov=src --cov-report=term-missing
+poetry run pytest --cov=src --cov-report=term-missing --cov-fail-under=75
 ```
 
 ## 🚀 Instrucciones de Despliegue en Render (Render.com)
@@ -123,14 +129,15 @@ El proyecto cuenta con un archivo `render.yaml` (Blueprint) listo para desplegar
 2. Copia la **Internal Database URL**.
 3. Crea el servicio web: **New +** > **Web Service** seleccionando tu repositorio.
 4. Parámetros de configuración:
-   - **Build Command**: `pip install poetry && poetry config virtualenvs.create false && poetry install --only main`
-   - **Start Command**: `alembic upgrade head && python seed_db.py && uvicorn src.main:app --host 0.0.0.0 --port $PORT`
+   - **Build Command**: `pip install poetry==1.8.3 && poetry config virtualenvs.create false && poetry install --only main --sync`
+   - **Pre-Deploy Command**: `alembic upgrade head && python -m src.seed_db`
+   - **Start Command**: `uvicorn src.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips=*`
 5. Variables de entorno:
    - `DATABASE_URL`: Pega la URL interna de la base de datos.
    - `SECRET_KEY`: Cadena segura para firma de tokens JWT.
    - `ENVIRONMENT`: `production`
-   - `PYTHON_VERSION`: `3.13.0`
-   - `ALLOWED_ORIGINS`: Dominio de tu Frontend o `*`
+   - `PYTHON_VERSION`: `3.13.7`
+   - `ALLOWED_ORIGINS`: dominios HTTPS explícitos, separados por comas; `*` está prohibido
 
 
 ---

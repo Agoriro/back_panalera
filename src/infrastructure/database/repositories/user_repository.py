@@ -55,7 +55,7 @@ class UserRepository(BaseRepository[UserModel], IUserRepository):
         )
         result = await self.session.execute(query)
         created_model = result.scalars().first()
-        return self._to_entity(created_model)  # type: ignore
+        return self._to_entity(created_model)
 
     async def get_by_id(self, id_user: UUID) -> User | None:
         query = (
@@ -103,7 +103,7 @@ class UserRepository(BaseRepository[UserModel], IUserRepository):
         )
         result = await self.session.execute(query)
         merged_model = result.scalars().first()
-        return self._to_entity(merged_model)  # type: ignore
+        return self._to_entity(merged_model)
 
     async def rotate_token_version(
         self, id_user: UUID, expected_version: int
