@@ -516,6 +516,19 @@ async def test_inventory_integrity_rules(
         "id_gender": str(gender_id),
     }
 
+    created = await async_client.post(
+        "/api/v1/inventory",
+        json={
+            **base_payload,
+            "code_inventory": "SKU-NUEVO",
+            "barcode_inventory": "BARCODE-NUEVO",
+        },
+        headers=headers,
+    )
+    assert created.status_code == 201
+    assert created.json()["code_inventory"] == "SKU-NUEVO"
+    assert created.json()["photos"] == []
+
     duplicate_sku = await async_client.post(
         "/api/v1/inventory",
         json={**base_payload, "code_inventory": "SKU-UNICO"},
@@ -582,7 +595,7 @@ async def test_inventory_integrity_rules(
         "/api/v1/inventory?page=1&page_size=1", headers=headers
     )
     assert paginated_inventory.status_code == 200
-    assert paginated_inventory.json()["total"] == 2
+    assert paginated_inventory.json()["total"] == 3
     assert len(paginated_inventory.json()["items"]) == 1
 
 

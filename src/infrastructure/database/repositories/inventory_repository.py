@@ -81,7 +81,12 @@ class InventoryRepository(BaseRepository[InventoryModel], IInventoryRepository):
             created_model = await super().create(model)
         except IntegrityError as exc:
             raise translate_integrity_error(exc) from exc
-        return self._to_entity(created_model)
+        # Reload with photos eagerly loaded. Accessing the unloaded relationship
+        # directly would trigger synchronous lazy I/O in an async session.
+        created_inventory = await self.get_by_id(created_model.id_inventory)
+        if created_inventory is None:  # pragma: no cover - defensive consistency check
+            raise RuntimeError("No se pudo recuperar el inventario recién creado")
+        return created_inventory
 
     async def get_by_id(self, id_inventory: UUID) -> Inventory | None:
         query = (
