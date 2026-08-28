@@ -24,7 +24,7 @@ El sistema utiliza autenticación basada en JWT (JSON Web Tokens). Existen dos t
     ```json
     {
       "username": "admin",
-      "password": "admin123"
+      "password": "<contraseña-configurada>"
     }
     ```
 2.  La API responderá con:
@@ -45,7 +45,7 @@ Authorization: Bearer <access_token>
 
 ### Flujo de Refresh (Expiración de Token)
 Si el Access Token expira, el backend responderá con un error HTTP `401 Unauthorized`.
-Tu interceptor en el Frontend (por ejemplo en Axios o Fetch) debe capturar este `401`, llamar al endpoint `/auth/refresh` enviando el `refresh_token`, y si es exitoso, reintentar la petición original con el nuevo `access_token`.
+Tu interceptor en el Frontend (por ejemplo en Axios o Fetch) debe capturar este `401`, llamar al endpoint `/auth/refresh` enviando el `refresh_token`, guardar **ambos tokens nuevos** de la respuesta y reintentar la petición original con el nuevo `access_token`. Cada refresh token es de un solo uso; reutilizar uno anterior devuelve `401`.
 
 ---
 
@@ -66,7 +66,11 @@ Los endpoints son operaciones CRUD clásicas (`GET`, `POST`, `PUT`, `DELETE`):
 Endpoint: `/inventory/`
 *   Para crear un producto, necesitas enviar los UUIDs (IDs) de las tablas de catálogos correspondientes (`id_supplier`, `id_color`, `id_size`, `id_category`, `id_gender`), la descripción, la **utilidad** y opcionalmente el código de producto (`code_inventory`) y código de barras (`barcode_inventory`).
 *   **Buscador Parcial Global**: `GET /inventory?search=texto` realiza una búsqueda en tiempo real (coincidencia parcial `ILIKE`) sobre la descripción, código de producto y código de barras.
-*   **Filtros Exactos**: `GET /inventory?code_inventory=...` o `GET /inventory?barcode_inventory=...` (ideal para lectores de código de barras). Ver detalle y ejemplos de código en [GUIA_INVENTARIO_CODIGOS.md](file:///c:/Users/EdwMar/Documents/Proyectos/Panalera/Back/back_panalera/GUIA_INVENTARIO_CODIGOS.md).
+*   **Filtros Exactos**: `GET /inventory?code_inventory=...` o `GET /inventory?barcode_inventory=...` (ideal para lectores de código de barras). Ver [GUIA_INVENTARIO_CODIGOS.md](GUIA_INVENTARIO_CODIGOS.md).
+*   `code_inventory` y `barcode_inventory` son únicos, admiten máximo 100 caracteres y convierten cadenas vacías en `null`. Un duplicado devuelve `409 Conflict`.
+*   Las relaciones de catálogo se validan al crear y actualizar. Un UUID inexistente devuelve `404 Not Found`.
+*   Las fotos deben usar URL `http`/`https`, con máximo 2048 caracteres. Cada artículo admite máximo 10 fotos. Una foto solo puede borrarse desde su propio artículo.
+*   Los listados de inventario, movimientos y usuarios son paginados mediante `page` (desde 1) y `page_size` (1 a 100). La respuesta usa `{ items, total, page, page_size, pages }`.
 *   El backend *no* calcula el precio final de venta como campo físico en la tabla de inventario, sino que la "utilidad" o los promedios se calculan dinámicamente según las compras de inventario (ver sección de Movimientos).
 
 ### C. Movimientos (Compras y Ventas)
@@ -75,7 +79,16 @@ Este es el módulo que afecta el **Stock y los Costos**.
 *   Existen dos tipos de movimiento (`type_movement`): `BUY` (Compra a proveedor) y `SELL` (Venta a cliente).
 *   **`BUY` (Compra)**: Incrementa la cantidad de stock del producto (`id_inventory`). Requiere el `id_supplier`, la `quantity` (cantidad entrante) y el `value` (costo unitario de la compra).
 *   **`SELL` (Venta)**: Disminuye la cantidad de stock. En este caso el `id_supplier` puede ir nulo. Debe enviarse la cantidad a restar y el valor final de venta.
-*   *Nota*: El backend valida que no haya "stock negativo". Si intentas hacer un `SELL` por una cantidad mayor al stock actual, la API devolverá un error HTTP `400 Bad Request`.
+*   Cada movimiento devuelve `unit_cost`. En ventas representa el coste histórico inmutable usado para calcular ganancia; compras posteriores no lo modifican.
+*   *Nota*: El backend valida que no haya "stock negativo". Si intentas hacer un `SELL` por una cantidad mayor al stock actual, la API devolverá `422 Unprocessable Entity` con `{"detail":"Stock insuficiente: disponible X, solicitado Y"}`.
+
+### Fechas y reportes
+
+*   Todas las fechas de movimientos se devuelven en UTC.
+*   `date_from` es inclusivo y `date_to` exclusivo: `[date_from, date_to)`.
+*   Los filtros deben incluir zona horaria (`Z` o un offset como `-05:00`); fechas sin zona devuelven `422`.
+*   `/reports/sales` también acepta `page` y `page_size`; sus totales corresponden a todo el filtro, no solo a la página.
+*   `/reports/inventory` incluye artículos sin movimientos con cantidades en cero.
 
 ### D. Usuarios y Roles
 Endpoints: `/users/` y `/roles/`
@@ -87,11 +100,11 @@ Gestión interna de permisos. Los contraseñas *nunca* se devuelven en los endpo
 
 El backend utiliza códigos HTTP estándar:
 *   `200 OK` / `201 Created`: Operación exitosa.
-*   `400 Bad Request`: Error de lógica de negocio (Ej: Stock insuficiente, regla de negocio violada).
+*   `400 Bad Request`: Petición inválida no cubierta por validación de esquema o reglas de negocio.
 *   `401 Unauthorized`: Token inválido o ausente.
 *   `403 Forbidden`: El usuario no tiene permisos suficientes para la acción.
 *   `404 Not Found`: El recurso solicitado (UUID) no existe.
-*   `422 Unprocessable Entity`: Error de validación de formulario/JSON (falta un campo, tipo de dato incorrecto). Muy común si no respetas el Schema exacto.
+*   `422 Unprocessable Entity`: Error de validación de formulario/JSON o regla de negocio (por ejemplo, stock insuficiente).
 *   `429 Too Many Requests`: Por seguridad, hay límite de peticiones (Rate Limiting). Especialmente en el `/auth/login`.
 
 El body del error generalmente tiene el formato (dependiendo si es un error de Pydantic o de negocio):

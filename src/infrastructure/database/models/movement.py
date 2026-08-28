@@ -2,22 +2,49 @@
 """
 Modelo SQLAlchemy para Movement.
 """
-from sqlalchemy import Column, Integer, text, ForeignKey, DateTime, Numeric, Enum
+
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from src.infrastructure.database.models.base import Base
+
 from src.domain.entities.movement import MovementType
+from src.infrastructure.database.models.base import Base
+
 
 class MovementModel(Base):
     __tablename__ = "movements"
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_movements_quantity_positive"),
+        CheckConstraint("value > 0", name="ck_movements_value_positive"),
+        CheckConstraint("unit_cost >= 0", name="ck_movements_unit_cost_nonnegative"),
+        Index("ix_movements_inventory_date", "id_inventory", "date"),
+        Index("ix_movements_type_date", "type_movement", "date"),
+    )
 
-    id_movement = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    id_movement = Column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
     type_movement = Column(Enum(MovementType), nullable=False)
     date = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"))
-    id_supplier = Column(UUID(as_uuid=True), ForeignKey("suppliers.id_supplier"), nullable=True)
-    id_inventory = Column(UUID(as_uuid=True), ForeignKey("inventory.id_inventory"), nullable=False)
+    id_supplier = Column(
+        UUID(as_uuid=True), ForeignKey("suppliers.id_supplier"), nullable=True
+    )
+    id_inventory = Column(
+        UUID(as_uuid=True), ForeignKey("inventory.id_inventory"), nullable=False
+    )
     quantity = Column(Integer, nullable=False)
     value = Column(Numeric(18, 6), nullable=False)
+    unit_cost = Column(Numeric(18, 6), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
     updated_at = Column(DateTime(timezone=True), onupdate=text("now()"))
 

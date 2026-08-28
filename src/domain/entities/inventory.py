@@ -2,19 +2,21 @@
 """
 Entidad de dominio Inventory y InventoryPhoto.
 """
+
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
-from uuid import UUID
 from decimal import Decimal
+from uuid import UUID
+
 
 @dataclass
 class InventoryPhoto:
     id_reg: UUID
     id_inventory: UUID
     url_photo: str
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
 
 @dataclass
 class Inventory:
@@ -27,9 +29,9 @@ class Inventory:
     id_category: UUID
     id_gender: UUID
     is_active: bool
-    code_inventory: Optional[str] = None
-    barcode_inventory: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    code_inventory: str | None = None
+    barcode_inventory: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
     # Campo opcional para almacenar las fotos asociadas al recuperar el inventario
-    photos: Optional[list[InventoryPhoto]] = None
+    photos: list[InventoryPhoto] | None = None

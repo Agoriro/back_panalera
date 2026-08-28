@@ -1,40 +1,37 @@
-# Guía de Integración para el Frontend: Nombre del Rol en JWT
+# Guía de roles y permisos
 
-Para facilitar la validación de accesos e inicio de sesión de forma rápida en el frontend, se ha realizado una modificación en la estructura del token JWT.
+## Roles soportados
 
----
+| Rol | Lectura y reportes | Inventario | Movimientos | Catálogos | Usuarios y roles |
+| --- | --- | --- | --- | --- | --- |
+| `Admin` | Sí | Escritura | Escritura | Escritura | Administración |
+| `Operator` | Sí | Escritura | Escritura | Solo lectura | No |
+| `Consulta` | Sí | Solo lectura | Solo lectura | Solo lectura | No |
 
-## 🔹 Estructura del Token JWT de Acceso (`access_token`)
+Nombres se comparan sin distinguir mayúsculas y minúsculas. Cualquier rol no
+incluido en matriz carece de permisos.
 
-El payload del JWT generado al iniciar sesión (`POST /api/v1/auth/login`) o al refrescar el token (`POST /api/v1/auth/refresh`) ahora incluye la propiedad `"role"` en texto plano (nombre legible del rol) en lugar del UUID interno de la base de datos.
+## JWT
 
-### Estructura del Payload decodificado:
+Access token contiene nombre de rol como ayuda para interfaz:
 
 ```json
 {
   "sub": "11ba20c7-691f-400f-b674-29e85f39f613",
-  "role": "Admin", // <- Ahora es el nombre legible del rol ("Admin", "Vendedor", etc.)
+  "role": "Admin",
+  "type": "access",
+  "jti": "bb27b127-009d-48b1-8e2f-e872304def64",
+  "iat": 1782771020,
   "exp": 1782774620
 }
 ```
 
-## 🔹 Consumo en el Frontend
+Frontend puede usar `role` para mostrar u ocultar controles, pero no debe
+considerarlo autorización definitiva. Backend consulta usuario activo y rol
+vigente en DB en cada petición. Un cambio de rol afecta permisos inmediatamente,
+aunque token todavía muestre valor anterior.
 
-El frontend puede decodificar la parte del payload del JWT en el cliente (usando librerías como `jwt-decode` en Javascript/Typescript) para conocer el rol de manera inmediata y mostrar/ocultar elementos de la interfaz, sin necesidad de consultar endpoints adicionales de perfil.
+## Respuestas esperadas
 
-Ejemplo:
-```typescript
-import { jwtDecode } from "jwt-decode";
-
-interface TokenPayload {
-  sub: string;
-  role: string; // "Admin" | "Vendedor"
-  exp: number;
-}
-
-const token = localStorage.getItem("access_token");
-if (token) {
-  const decoded = jwtDecode<TokenPayload>(token);
-  console.log("Rol del usuario:", decoded.role); // "Admin"
-}
-```
+- `401 Unauthorized`: token ausente, inválido, de tipo incorrecto o usuario inactivo.
+- `403 Forbidden`: usuario autenticado sin permiso requerido.

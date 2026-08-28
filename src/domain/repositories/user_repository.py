@@ -2,10 +2,12 @@
 """
 Interfaz de repositorio para la entidad User.
 """
+
 from abc import ABC, abstractmethod
-from typing import List, Optional
 from uuid import UUID
+
 from src.domain.entities.user import User
+
 
 class UserRepository(ABC):
     @abstractmethod
@@ -13,17 +15,24 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_id(self, id_user: UUID) -> Optional[User]:
+    async def get_by_id(self, id_user: UUID) -> User | None:
         pass
 
     @abstractmethod
-    async def get_by_username(self, username: str) -> Optional[User]:
+    async def get_by_username(self, username: str) -> User | None:
         pass
 
     @abstractmethod
-    async def get_all(self) -> List[User]:
+    async def get_all(self, offset: int = 0, limit: int = 50) -> tuple[list[User], int]:
         pass
 
     @abstractmethod
     async def update(self, user: User) -> User:
+        pass
+
+    @abstractmethod
+    async def rotate_token_version(
+        self, id_user: UUID, expected_version: int
+    ) -> User | None:
+        """Incrementa versión solo si coincide, invalidando refresh token usado."""
         pass

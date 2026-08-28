@@ -2,10 +2,11 @@
 """
 Entidad de dominio User.
 """
+
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
+
 
 @dataclass
 class User:
@@ -14,6 +15,7 @@ class User:
     password: str
     id_role: UUID
     is_active: bool
-    role_name: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    token_version: int = 0
+    role_name: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None

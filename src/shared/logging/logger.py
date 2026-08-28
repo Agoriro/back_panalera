@@ -5,13 +5,15 @@ Configuración global de logging estructurado utilizando structlog.
 
 import logging
 import sys
+
 import structlog
+
 from src.shared.config.settings import settings
 
 
 def setup_logging() -> None:
     """Configura el sistema de logging estructurado."""
-    
+
     log_level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
     logging.basicConfig(
         format="%(message)s",
@@ -40,6 +42,7 @@ def setup_logging() -> None:
         wrapper_class=structlog.stdlib.BoundLogger,
         cache_logger_on_first_use=True,
     )
+
 
 def get_logger(name: str) -> structlog.BoundLogger:
     """Obtiene un logger estructurado con el nombre dado."""

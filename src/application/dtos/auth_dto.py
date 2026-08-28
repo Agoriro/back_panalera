@@ -1,12 +1,15 @@
 # Paso 14: src/application/dtos/auth_dto.py
 from pydantic import BaseModel, Field
 
+
 class LoginRequest(BaseModel):
     username: str = Field(..., min_length=1)
     password: str = Field(..., min_length=1)
 
+
 class RefreshRequest(BaseModel):
     refresh_token: str = Field(..., min_length=1)
+
 
 class TokenResponse(BaseModel):
     access_token: str

@@ -2,12 +2,16 @@ services:
   - type: web
     name: panalera-backend
     runtime: python
-    plan: free
-    buildCommand: "pip install poetry && poetry config virtualenvs.create false && poetry install --only main"
-    startCommand: "alembic upgrade head && python seed_db.py && uvicorn src.main:app --host 0.0.0.0 --port $PORT"
+    plan: starter
+    autoDeployTrigger: checksPass
+    maxShutdownDelaySeconds: 30
+    buildCommand: "pip install poetry==1.8.3 && poetry config virtualenvs.create false && poetry install --only main --sync"
+    preDeployCommand: "alembic upgrade head"
+    startCommand: "uvicorn src.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips=*"
+    healthCheckPath: /health/ready
     envVars:
       - key: PYTHON_VERSION
-        value: 3.13.0
+        value: 3.13.7
       - key: ENVIRONMENT
         value: production
       - key: LOG_LEVEL
@@ -19,10 +23,20 @@ services:
       - key: REFRESH_TOKEN_EXPIRE_DAYS
         value: "7"
       - key: ALLOWED_ORIGINS
-        value: "*"
+        sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
         sync: false
-
-
+      - key: DB_POOL_SIZE
+        value: "5"
+      - key: DB_MAX_OVERFLOW
+        value: "10"
+      - key: DB_POOL_TIMEOUT_SECONDS
+        value: "10"
+      - key: DB_POOL_RECYCLE_SECONDS
+        value: "1800"
+      - key: DB_COMMAND_TIMEOUT_SECONDS
+        value: "30"
+      - key: DB_HEALTH_TIMEOUT_SECONDS
+        value: "3"

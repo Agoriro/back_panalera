@@ -1,12 +1,16 @@
 # Paso 14: src/application/dtos/role_dto.py
-from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class RoleCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=50)
 
+
 class RoleUpdate(BaseModel):
     name: str = Field(..., min_length=1, max_length=50)
+
 
 class RoleResponse(BaseModel):
     id_role: UUID

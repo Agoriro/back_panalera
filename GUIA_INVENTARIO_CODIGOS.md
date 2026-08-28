@@ -95,9 +95,17 @@ export interface InventoryItem {
   is_active: boolean;
 }
 
+export interface Page<T> {
+  items: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  pages: number;
+}
+
 // Búsqueda parcial (Buscador universal en la UI / Punto de Venta)
-export const searchInventory = async (query: string, token: string): Promise<InventoryItem[]> => {
-  const response = await axios.get<InventoryItem[]>(`${API_URL}/inventory`, {
+export const searchInventory = async (query: string, token: string): Promise<Page<InventoryItem>> => {
+  const response = await axios.get<Page<InventoryItem>>(`${API_URL}/inventory`, {
     headers: { Authorization: `Bearer ${token}` },
     params: { search: query }
   });
@@ -106,11 +114,11 @@ export const searchInventory = async (query: string, token: string): Promise<Inv
 
 // Búsqueda exacta por código de barras (Escáner POS)
 export const findByBarcode = async (barcode: string, token: string): Promise<InventoryItem | null> => {
-  const response = await axios.get<InventoryItem[]>(`${API_URL}/inventory`, {
+  const response = await axios.get<Page<InventoryItem>>(`${API_URL}/inventory`, {
     headers: { Authorization: `Bearer ${token}` },
     params: { barcode_inventory: barcode }
   });
-  return response.data.length > 0 ? response.data[0] : null;
+  return response.data.items.length > 0 ? response.data.items[0] : null;
 };
 ```
 

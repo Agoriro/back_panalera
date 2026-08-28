@@ -2,38 +2,42 @@
 """
 Repositorio base con operaciones CRUD comunes utilizando SQLAlchemy AsyncSession.
 """
-from typing import Type, TypeVar, Generic, List, Optional
+
+from typing import Generic, TypeVar
 from uuid import UUID
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.infrastructure.database.models.base import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
 
+
 class BaseRepository(Generic[ModelType]):
-    def __init__(self, model: Type[ModelType], session: AsyncSession):
+    def __init__(self, model: type[ModelType], session: AsyncSession):
         self.model = model
         self.session = session
 
-    async def get_by_id(self, id: UUID) -> Optional[ModelType]:
+    async def get_by_id(self, id: UUID) -> ModelType | None:
         pk_column = self.model.__mapper__.primary_key[0]
         query = select(self.model).where(pk_column == id)
         result = await self.session.execute(query)
         return result.scalars().first()
 
-    async def get_all(self) -> List[ModelType]:
+    async def get_all(self) -> list[ModelType]:
         query = select(self.model)
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
     async def create(self, obj_in: ModelType) -> ModelType:
         self.session.add(obj_in)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(obj_in)
         return obj_in
 
     async def update(self, obj_in: ModelType) -> ModelType:
         self.session.add(obj_in)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(obj_in)
         return obj_in

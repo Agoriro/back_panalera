@@ -2,10 +2,12 @@
 """
 Interfaz de repositorio para la entidad Inventory y InventoryPhoto.
 """
+
 from abc import ABC, abstractmethod
-from typing import List, Optional
 from uuid import UUID
+
 from src.domain.entities.inventory import Inventory, InventoryPhoto
+
 
 class InventoryRepository(ABC):
     @abstractmethod
@@ -13,21 +15,40 @@ class InventoryRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_id(self, id_inventory: UUID) -> Optional[Inventory]:
+    async def get_by_id(self, id_inventory: UUID) -> Inventory | None:
         pass
 
     @abstractmethod
-    async def get_all(self, category_id: Optional[UUID] = None, gender_id: Optional[UUID] = None, 
-                      color_id: Optional[UUID] = None, size_id: Optional[UUID] = None, 
-                      is_active: Optional[bool] = None, code_inventory: Optional[str] = None,
-                      barcode_inventory: Optional[str] = None, search: Optional[str] = None) -> List[Inventory]:
+    async def get_by_id_for_update(self, id_inventory: UUID) -> Inventory | None:
+        """Obtiene y bloquea artículo hasta finalizar transacción actual."""
+        pass
+
+    @abstractmethod
+    async def get_all(
+        self,
+        category_id: UUID | None = None,
+        gender_id: UUID | None = None,
+        color_id: UUID | None = None,
+        size_id: UUID | None = None,
+        is_active: bool | None = None,
+        code_inventory: str | None = None,
+        barcode_inventory: str | None = None,
+        search: str | None = None,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> tuple[list[Inventory], int]:
         pass
 
     @abstractmethod
     async def update(self, inventory: Inventory) -> Inventory:
         pass
 
+
 class InventoryPhotoRepository(ABC):
+    @abstractmethod
+    async def get_by_id(self, id_reg: UUID) -> InventoryPhoto | None:
+        pass
+
     @abstractmethod
     async def create(self, photo: InventoryPhoto) -> InventoryPhoto:
         pass
@@ -37,5 +58,5 @@ class InventoryPhotoRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_inventory_id(self, id_inventory: UUID) -> List[InventoryPhoto]:
+    async def get_by_inventory_id(self, id_inventory: UUID) -> list[InventoryPhoto]:
         pass

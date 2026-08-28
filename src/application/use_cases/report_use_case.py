@@ -1,103 +1,90 @@
-# Paso 15: src/application/use_cases/report_use_case.py
-from datetime import datetime, timedelta
-from typing import Optional, List
-from uuid import UUID
-from collections import defaultdict
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from src.application.dtos.report_dto import SalesReportResponse, SaleReportItem, InventoryReportItem, ProjectionReportItem
+from src.application.date_ranges import normalize_date_range
+from src.application.dtos.report_dto import (
+    InventoryReportItem,
+    ProjectionReportItem,
+    SaleReportItem,
+    SalesReportResponse,
+)
 from src.domain.repositories.movement_repository import MovementRepository
-from src.domain.repositories.inventory_repository import InventoryRepository
-from src.domain.entities.movement import MovementType
 from src.shared.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 class ReportUseCase:
-    def __init__(self, movement_repo: MovementRepository, inv_repo: InventoryRepository):
+    def __init__(self, movement_repo: MovementRepository):
         self.movement_repo = movement_repo
-        self.inv_repo = inv_repo
 
-    async def get_sales_report(self, date_from: Optional[datetime] = None, date_to: Optional[datetime] = None) -> SalesReportResponse:
+    async def get_sales_report(
+        self,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> SalesReportResponse:
         logger.info("Generando reporte de ventas", date_from=date_from, date_to=date_to)
-        
-        sales = await self.movement_repo.get_all(type_movement=MovementType.SELL, date_from=date_from, date_to=date_to)
-        
-        items = []
-        total_revenue = Decimal('0.0')
-        total_profit = Decimal('0.0')
-
-        # Para calcular profit necesitamos el last_purchase_price *antes* o de esa fecha
-        # Simplificación: usar get_last_purchase_by_inventory actual. En un sistema real
-        # se debe registrar el coste de la mercancía vendida (COGS) en el momento de la venta.
-        # Aquí calcularemos con la última compra actual para seguir la instrucción.
-        
-        for sale in sales:
-            last_purchase = await self.movement_repo.get_last_purchase_by_inventory(sale.id_inventory)
-            last_purchase_price = last_purchase.value if last_purchase else Decimal('0.0')
-            
-            profit = (sale.value - last_purchase_price) * sale.quantity
-            total_revenue += sale.value * sale.quantity
-            total_profit += profit
-
-            items.append(SaleReportItem(
+        date_from, date_to = normalize_date_range(date_from, date_to)
+        (
+            sales,
+            total,
+            total_revenue,
+            total_profit,
+        ) = await self.movement_repo.get_sales_report(
+            date_from,
+            date_to,
+            offset=(page - 1) * page_size,
+            limit=page_size,
+        )
+        items = [
+            SaleReportItem(
                 id_movement=sale.id_movement,
                 date=sale.date,
                 id_inventory=sale.id_inventory,
                 quantity=sale.quantity,
                 value_sell=sale.value,
-                last_purchase_price=last_purchase_price,
-                profit=profit
-            ))
-
+                last_purchase_price=sale.unit_cost,
+                profit=(sale.value - sale.unit_cost) * sale.quantity,
+            )
+            for sale in sales
+        ]
         return SalesReportResponse(
             items=items,
             total_revenue=total_revenue,
-            total_profit=total_profit
+            total_profit=total_profit,
+            total=total,
+            page=page,
+            page_size=page_size,
+            pages=(total + page_size - 1) // page_size,
         )
 
-    async def get_inventory_report(self) -> List[InventoryReportItem]:
+    async def get_inventory_report(self) -> list[InventoryReportItem]:
         logger.info("Generando reporte de existencias")
-        # Obtiene todos los movimientos
-        movements = await self.movement_repo.get_all()
-        
-        inventory_data = defaultdict(lambda: {"bought": 0, "sold": 0})
-        
-        for mov in movements:
-            if mov.type_movement == MovementType.BUY:
-                inventory_data[mov.id_inventory]["bought"] += mov.quantity
-            elif mov.type_movement == MovementType.SELL:
-                inventory_data[mov.id_inventory]["sold"] += mov.quantity
-                
-        reports = []
-        for id_inv, data in inventory_data.items():
-            reports.append(InventoryReportItem(
-                id_inventory=id_inv,
-                total_bought=data["bought"],
-                total_sold=data["sold"],
-                current_stock=data["bought"] - data["sold"]
-            ))
-            
-        return reports
+        rows = await self.movement_repo.get_inventory_report()
+        return [
+            InventoryReportItem(
+                id_inventory=id_inventory,
+                total_bought=total_bought,
+                total_sold=total_sold,
+                current_stock=current_stock,
+            )
+            for id_inventory, total_bought, total_sold, current_stock in rows
+        ]
 
-    async def get_projection_report(self) -> List[ProjectionReportItem]:
+    async def get_projection_report(self) -> list[ProjectionReportItem]:
         logger.info("Generando reporte de proyecciones")
-        # Promedio de ventas de los últimos 3 meses
-        date_from = datetime.now() - timedelta(days=90)
-        sales = await self.movement_repo.get_all(type_movement=MovementType.SELL, date_from=date_from)
-        
-        sales_by_inv = defaultdict(int)
-        for sale in sales:
-            sales_by_inv[sale.id_inventory] += sale.quantity
-            
+        date_from = datetime.now(UTC) - timedelta(days=90)
+        rows = await self.movement_repo.get_projection_report(date_from)
         reports = []
-        for id_inv, total_sold in sales_by_inv.items():
-            # Promedio mensual = total_sold / 3
-            avg = Decimal(total_sold) / Decimal('3.0')
-            reports.append(ProjectionReportItem(
-                id_inventory=id_inv,
-                average_monthly_sales=avg,
-                projected_sales_next_month=int(round(avg, 0))
-            ))
-            
+        for id_inv, total_sold in rows:
+            average = Decimal(total_sold) / Decimal("3.0")
+            reports.append(
+                ProjectionReportItem(
+                    id_inventory=id_inv,
+                    average_monthly_sales=average,
+                    projected_sales_next_month=int(round(average, 0)),
+                )
+            )
         return reports

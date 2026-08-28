@@ -1,17 +1,36 @@
 # Paso 17: src/interfaces/api/dependencies/database.py
-from typing import AsyncGenerator
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from collections.abc import AsyncGenerator
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
 from src.shared.config.settings import settings
 
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.ENVIRONMENT == "development",
-    future=True
+engine_options: dict[str, object] = {
+    "echo": settings.ENVIRONMENT == "development",
+    "pool_pre_ping": True,
+}
+if not settings.DATABASE_URL.startswith("sqlite"):
+    engine_options.update(
+        pool_size=settings.DB_POOL_SIZE,
+        max_overflow=settings.DB_MAX_OVERFLOW,
+        pool_timeout=settings.DB_POOL_TIMEOUT_SECONDS,
+        pool_recycle=settings.DB_POOL_RECYCLE_SECONDS,
+        connect_args={"command_timeout": settings.DB_COMMAND_TIMEOUT_SECONDS},
+    )
+
+engine = create_async_engine(settings.DATABASE_URL, **engine_options)
+
+async_session_maker = async_sessionmaker(
+    engine, class_=AsyncSession, expire_on_commit=False
 )
 
-async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     """Provee una sesión de base de datos asíncrona por request."""
     async with async_session_maker() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise

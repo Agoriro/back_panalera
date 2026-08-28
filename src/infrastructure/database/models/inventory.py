@@ -2,24 +2,71 @@
 """
 Modelo SQLAlchemy para Inventory y InventoryPhotos.
 """
-from sqlalchemy import Column, String, Boolean, text, ForeignKey, DateTime, Numeric
+
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
 from src.infrastructure.database.models.base import Base
+
 
 class InventoryModel(Base):
     __tablename__ = "inventory"
+    __table_args__ = (
+        Index("uq_inventory_code", "code_inventory", unique=True),
+        Index("uq_inventory_barcode", "barcode_inventory", unique=True),
+        Index("ix_inventory_category", "id_category"),
+        Index("ix_inventory_gender", "id_gender"),
+        Index("ix_inventory_color", "id_color"),
+        Index("ix_inventory_size", "id_size"),
+        Index("ix_inventory_active", "is_active"),
+        Index(
+            "ix_inventory_search_description",
+            "description_inventory",
+            postgresql_using="gin",
+            postgresql_ops={"description_inventory": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_inventory_search_code",
+            "code_inventory",
+            postgresql_using="gin",
+            postgresql_ops={"code_inventory": "gin_trgm_ops"},
+        ),
+        Index(
+            "ix_inventory_search_barcode",
+            "barcode_inventory",
+            postgresql_using="gin",
+            postgresql_ops={"barcode_inventory": "gin_trgm_ops"},
+        ),
+    )
 
-    id_inventory = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    description_inventory = Column(String, nullable=False)
-    code_inventory = Column(String, nullable=True)
-    barcode_inventory = Column(String, nullable=True)
+    id_inventory = Column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    description_inventory = Column(String(255), nullable=False)
+    code_inventory = Column(String(100), nullable=True)
+    barcode_inventory = Column(String(100), nullable=True)
     utility = Column(Numeric(18, 6), nullable=False)
-    id_supplier = Column(UUID(as_uuid=True), ForeignKey("suppliers.id_supplier"), nullable=False)
+    id_supplier = Column(
+        UUID(as_uuid=True), ForeignKey("suppliers.id_supplier"), nullable=False
+    )
     id_color = Column(UUID(as_uuid=True), ForeignKey("colors.id_color"), nullable=False)
     id_size = Column(UUID(as_uuid=True), ForeignKey("sizes.id_size"), nullable=False)
-    id_category = Column(UUID(as_uuid=True), ForeignKey("categories.id_category"), nullable=False)
-    id_gender = Column(UUID(as_uuid=True), ForeignKey("genders.id_gender"), nullable=False)
+    id_category = Column(
+        UUID(as_uuid=True), ForeignKey("categories.id_category"), nullable=False
+    )
+    id_gender = Column(
+        UUID(as_uuid=True), ForeignKey("genders.id_gender"), nullable=False
+    )
     is_active = Column(Boolean, default=True, server_default=text("true"))
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
     updated_at = Column(DateTime(timezone=True), onupdate=text("now()"))
@@ -29,15 +76,23 @@ class InventoryModel(Base):
     size = relationship("SizeModel")
     category = relationship("CategoryModel")
     gender = relationship("GenderModel")
-    photos = relationship("InventoryPhotoModel", back_populates="inventory", cascade="all, delete-orphan")
+    photos = relationship(
+        "InventoryPhotoModel", back_populates="inventory", cascade="all, delete-orphan"
+    )
 
 
 class InventoryPhotoModel(Base):
     __tablename__ = "inventory_photos"
 
-    id_reg = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
-    id_inventory = Column(UUID(as_uuid=True), ForeignKey("inventory.id_inventory", ondelete="CASCADE"), nullable=False)
-    url_photo = Column(String, nullable=False)
+    id_reg = Column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    id_inventory = Column(
+        UUID(as_uuid=True),
+        ForeignKey("inventory.id_inventory", ondelete="CASCADE"),
+        nullable=False,
+    )
+    url_photo = Column(String(2048), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=text("now()"))
     updated_at = Column(DateTime(timezone=True), onupdate=text("now()"))
 
