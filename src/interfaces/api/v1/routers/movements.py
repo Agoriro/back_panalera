@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, status
 
 from src.application.dtos.movement_dto import (
     MovementResponse,
+    MovementUpdate,
     PurchaseCreate,
     SaleCreate,
 )
@@ -44,6 +45,19 @@ async def register_sale(
     data: SaleCreate, use_case: MovementUseCase = Depends(get_movement_use_case)
 ):
     return await use_case.register_sale(data)
+
+
+@router.put(
+    "/{id_movement}",
+    response_model=MovementResponse,
+    dependencies=[Depends(has_permission(Permission.WRITE_MOVEMENTS))],
+)
+async def update_movement(
+    id_movement: UUID,
+    data: MovementUpdate,
+    use_case: MovementUseCase = Depends(get_movement_use_case),
+):
+    return await use_case.update(id_movement, data)
 
 
 @router.get("", response_model=Page[MovementResponse])

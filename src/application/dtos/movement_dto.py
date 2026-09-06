@@ -21,6 +21,14 @@ class SaleCreate(BaseModel):
     # value is calculated automatically
 
 
+class MovementUpdate(BaseModel):
+    quantity: int = Field(..., gt=0)
+    value: Decimal = Field(..., gt=0, max_digits=18, decimal_places=6)
+    id_supplier: UUID | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class MovementResponse(BaseModel):
     id_movement: UUID
     type_movement: MovementType

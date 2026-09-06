@@ -53,6 +53,25 @@ class MovementRepository(BaseRepository[MovementModel], IMovementRepository):
             unit_cost=entity.unit_cost,
         )
 
+    async def find_by_id(self, id: UUID, for_update: bool = False) -> Movement | None:
+        query = select(MovementModel).where(MovementModel.id_movement == id)
+        if for_update:
+            query = query.with_for_update().execution_options(populate_existing=True)
+        model = (await self.session.execute(query)).scalars().first()
+        return self._to_entity(model) if model else None
+
+    async def update_movement(self, movement: Movement) -> Movement:
+        model = await super().get_by_id(movement.id_movement)
+        if model is None:
+            raise ValueError("Movimiento no encontrado")
+        model.quantity = movement.quantity
+        model.value = movement.value
+        model.unit_cost = movement.unit_cost
+        model.id_supplier = movement.id_supplier
+        model.updated_at = datetime.now(UTC)
+        updated = await super().update(model)
+        return self._to_entity(updated)
+
     async def create(self, movement: Movement) -> Movement:
         model = self._to_model(movement)
         if not movement.id_movement:
