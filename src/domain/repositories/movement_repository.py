@@ -13,6 +13,14 @@ from src.domain.entities.movement import Movement, MovementType
 
 class MovementRepository(ABC):
     @abstractmethod
+    async def find_by_id(self, id: UUID, for_update: bool = False) -> Movement | None:
+        pass
+
+    @abstractmethod
+    async def update_movement(self, movement: Movement) -> Movement:
+        pass
+
+    @abstractmethod
     async def create(self, movement: Movement) -> Movement:
         pass
 

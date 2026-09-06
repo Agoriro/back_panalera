@@ -432,6 +432,61 @@ async def test_stock_never_becomes_negative(
     )
     assert naive_date.status_code == 422
 
+    purchase_id = purchase.json()["id_movement"]
+    sale_id = exact_sale.json()["id_movement"]
+    rejected_purchase = await async_client.put(
+        f"/api/v1/movements/{purchase_id}",
+        json={"quantity": 1, "value": "100"},
+        headers=headers,
+    )
+    assert rejected_purchase.status_code == 422
+
+    edited_sale = await async_client.put(
+        f"/api/v1/movements/{sale_id}",
+        json={"quantity": 2, "value": "150"},
+        headers=headers,
+    )
+    assert edited_sale.status_code == 200
+    assert edited_sale.json()["id_movement"] == sale_id
+    assert edited_sale.json()["date"] == exact_sale.json()["date"]
+    assert Decimal(edited_sale.json()["unit_cost"]) == Decimal("100")
+
+    edited_purchase = await async_client.put(
+        f"/api/v1/movements/{purchase_id}",
+        json={"quantity": 2, "value": "90", "id_supplier": str(supplier_id)},
+        headers=headers,
+    )
+    assert edited_purchase.status_code == 200
+    assert Decimal(edited_purchase.json()["unit_cost"]) == Decimal("90")
+    persisted = await async_client.get(
+        f"/api/v1/movements?id_inventory={inventory_id}",
+        headers=headers,
+    )
+    assert persisted.json()["total"] == 3
+    assert (
+        next(m for m in persisted.json()["items"] if m["id_movement"] == purchase_id)[
+            "quantity"
+        ]
+        == 2
+    )
+    stock_after_edit = await async_client.get(
+        "/api/v1/reports/inventory", headers=headers
+    )
+    assert (
+        next(
+            i for i in stock_after_edit.json() if i["id_inventory"] == str(inventory_id)
+        )["current_stock"]
+        == 1
+    )
+    report_after_edit = await async_client.get("/api/v1/reports/sales", headers=headers)
+    assert Decimal(report_after_edit.json()["total_revenue"]) == Decimal("300")
+    assert Decimal(report_after_edit.json()["total_profit"]) == Decimal("100")
+    unauthorized = await async_client.put(
+        f"/api/v1/movements/{sale_id}",
+        json={"quantity": 1, "value": "150"},
+    )
+    assert unauthorized.status_code == 401
+
 
 @pytest.mark.asyncio
 async def test_inventory_integrity_rules(

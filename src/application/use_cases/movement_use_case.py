@@ -5,6 +5,7 @@ from uuid import UUID
 from src.application.date_ranges import normalize_date_range
 from src.application.dtos.movement_dto import (
     MovementResponse,
+    MovementUpdate,
     PurchaseCreate,
     SaleCreate,
 )
@@ -104,6 +105,52 @@ class MovementUseCase:
 
         created_mov = await self.movement_repo.create(movement)
         return MovementResponse.model_validate(created_mov)
+
+    async def update(self, id: UUID, data: MovementUpdate) -> MovementResponse:
+        movement = await self.movement_repo.find_by_id(id)
+        if movement is None:
+            raise ResourceNotFoundException("Movimiento no encontrado")
+
+        # Same inventory lock as creation: serialize stock checks and writes.
+        inventory = await self.inv_repo.get_by_id_for_update(movement.id_inventory)
+        if inventory is None:
+            raise ResourceNotFoundException("Artículo de inventario no encontrado")
+        movement = await self.movement_repo.find_by_id(id, for_update=True)
+        if movement is None:
+            raise ResourceNotFoundException("Movimiento no encontrado")
+
+        stock = await self.movement_repo.get_stock(movement.id_inventory)
+        sign = 1 if movement.type_movement == MovementType.BUY else -1
+        resulting_stock = stock + sign * (data.quantity - movement.quantity)
+        if resulting_stock < 0:
+            raise BusinessRuleValidationException(
+                "La modificación dejaría existencias negativas. Revisa la cantidad."
+            )
+
+        if movement.type_movement == MovementType.BUY:
+            supplier_id = data.id_supplier or movement.id_supplier
+            if supplier_id != movement.id_supplier:
+                supplier = await self.supplier_repo.get_by_id(supplier_id)
+                if supplier is None or not supplier.is_active:
+                    raise ResourceNotFoundException(
+                        "Proveedor no encontrado o inactivo"
+                    )
+            movement.id_supplier = supplier_id
+            movement.unit_cost = data.value
+        else:
+            if data.id_supplier is not None:
+                raise BusinessRuleValidationException("Una venta no admite proveedor")
+            # Preserve historical sale cost; later purchases must not reprice it.
+            minimum_price = movement.unit_cost * (1 + inventory.utility)
+            if data.value != movement.value and data.value < minimum_price:
+                raise BusinessRuleValidationException(
+                    f"El precio no puede ser inferior al sugerido ({minimum_price})."
+                )
+
+        movement.quantity = data.quantity
+        movement.value = data.value
+        updated = await self.movement_repo.update_movement(movement)
+        return MovementResponse.model_validate(updated)
 
     async def get_all(
         self,
